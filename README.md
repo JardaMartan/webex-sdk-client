@@ -4,7 +4,7 @@ This is a React frontend for [Webex Browser SDK](https://developer.webex.com/doc
 
 ## Running locally
 
-Before running the application, copy the **`src/api/webexConfig.sample.js`** to **`src/api/webexConfig.localhost.js`**, create a Webex Guest Issuer account and fill in the values of **guestId** and **guestSecret** in the file.
+Before running the application, copy the **`src/api/webexConfig.sample.js`** to **`src/api/webexConfig.localhost.js`**, create a Webex Guest Issuer and fill in the values of **guestId** and **guestSecret** in the file.
 
 In the project directory, you can run:
 
