@@ -20,6 +20,7 @@ import {
   MenuItem,
   MenuButton,
   Divider,
+  // Input,
   Sheet, //eslint-disable-line no-unused-vars
 } from "@mui/joy";
 
@@ -29,12 +30,26 @@ import {
 // import HelpRoundedIcon from "@mui/icons-material/HelpRounded";
 // import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import { setControlPanel } from "../../redux/actions/appActions";
 // import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 
 // eslint-disable-next-line no-unused-vars
-const AppHeader = ({ logoutUser, user, ...props }) => {
+const AppHeader = ({
+  logoutUser,
+  user,
+  controlPanel,
+  setControlPanel,
+  ...props
+}) => {
   // const logoIcon = <i className="icon icon-cisco-logo" />;
   const navigate = useNavigate();
+  //eslint-disable-next-line no-unused-vars
+  // const [controlPanel, setControlPanel] = useState(
+  //   <div>
+  //     <Input />
+  //     <Button variant="contained">Hledat</Button>
+  //   </div>
+  // );
 
   const getAvatar = () => {
     if (user.webexUser && user.webexUser.avatar) {
@@ -157,49 +172,31 @@ const AppHeader = ({ logoutUser, user, ...props }) => {
         >
           Konferenční klient
         </Typography>
+        {controlPanel.component}
         <Box sx={{ flexGrow: 1 }} />
         {topbarRight}
       </Toolbar>
     </AppBar>
-
-    // <Box
-    //   sx={{
-    //     display: "flex",
-    //     flexGrow: 1,
-    //     justifyContent: "space-between",
-    //     p: 2,
-    //   }}
-    // >
-    //   <Stack
-    //     direction="row"
-    //     justifyContent="center"
-    //     alignItems="center"
-    //     spacing={1}
-    //     sx={{ display: { xs: "none", sm: "flex" } }}
-    //   >
-    //     <Sheet>
-    //       <h1>Konferenční klient</h1>
-    //     </Sheet>
-    //   </Stack>
-
-    //   {topbarRight}
-    // </Box>
   );
 };
 
 AppHeader.propTypes = {
   user: PropTypes.object.isRequired,
   logoutUser: PropTypes.func.isRequired,
+  controlPanel: PropTypes.object.isRequired,
+  setControlPanel: PropTypes.func,
 };
 
 const mapStateToProps = (state) => {
   return {
     user: state.user,
+    controlPanel: state.app.controlPanel,
   };
 };
 
 const mapDispatchToProps = {
   logoutUser,
+  setControlPanel,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppHeader);

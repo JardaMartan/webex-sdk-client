@@ -4,45 +4,41 @@ import { connect } from "react-redux";
 // import { useNavigate } from "react-router-dom";
 import { init as initWebex } from "webex";
 import Button from "@mui/joy/Button";
-import Input from "@mui/joy/Input";
 import Box from "@mui/joy/Box";
 import ButtonGroup from "@mui/joy/ButtonGroup";
-import CircularProgress from "@mui/joy/CircularProgress";
 import RemoteVideoOverlay from "./RemoteVideoOverlay";
 import Modal from "@mui/joy/Modal";
 import ModalDialog from "@mui/joy/ModalDialog";
 import ModalClose from "@mui/joy/ModalClose";
 // import Typography from "@mui/joy/Typography";
-import Grid from "@mui/joy/Grid";
-import IconButton from "@mui/joy/IconButton";
 import Paper from "@mui/material/Paper";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import { DialogActions, DialogContent, DialogTitle } from "@mui/joy";
-
+import MeetingControlsRedux from "./MeetingControlsRedux";
+import MeetingControls from "./MeetingControls"; //eslint-disable-line no-unused-vars
+import { MEETING_STATUSES } from "../../constants/meeting";
+import MeetingIdForm from "./MeetingIdFormRedux";
 import {
-  Mic,
-  MicOff,
-  MicRounded, //eslint-disable-line no-unused-vars
-  MicOffRounded, //eslint-disable-line no-unused-vars
-  Videocam,
-  VideocamOff,
-  BackHand,
-} from "@mui/icons-material";
+  setControlPanel,
+  setControlPanelCallback,
+  setControlPanelComponent,
+  setControlPanelData,
+  setControlPanelId,
+} from "../../redux/actions/appActions";
 
-// eslint-disable-next-line no-unused-vars
-const MeetingManager = ({ user, webexConfig, ...props }) => {
-  const MEETING_STATUSES = {
-    INACTIVE: "inactive",
-    ACTIVE: "active",
-    IN_LOBBY: "lobby",
-    JOINING: "joining",
-  };
+const MeetingManager = ({
+  user,
+  webexConfig,
+  setControlPanel,
+  setControlPanelCallback,
+  setControlPanelComponent,
+  setControlPanelData,
+  setControlPanelId,
+  ...props //eslint-disable-line no-unused-vars
+}) => {
   const [meetingStatus, setMeetingStatus] = useState(MEETING_STATUSES.INACTIVE); //eslint-disable-line no-unused-vars
-
-  const buttonSides = 64;
-
-  const [meetingNumber, setMeetingNumber] = useState(""); //eslint-disable-line no-unused-vars
+  // const [meetingNumber, setMeetingNumber] = useState(""); //eslint-disable-line no-unused-vars
   const [webexClient, setWebexClient] = useState(null); //eslint-disable-line no-unused-vars
   const [meeting, setMeeting] = useState(null); //eslint-disable-line no-unused-vars
   const [buttonDisabled, setButtonDisabled] = useState(true); //eslint-disable-line no-unused-vars
@@ -50,9 +46,11 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
   const [overlayHidden, setOverlayHidden] = useState(true); //eslint-disable-line no-unused-vars
   const [overlayMessage, setOverlayMessage] = useState(""); //eslint-disable-line no-unused-vars
   const [isAudioMuted, setIsAudioMuted] = useState(false); //eslint-disable-line no-unused-vars
+  const [isUnmuteAllowed, setIsUnmuteAllowed] = useState(false); //eslint-disable-line no-unused-vars
   const [isVideoMuted, setIsVideoMuted] = useState(false); //eslint-disable-line no-unused-vars
   const [isHandRaised, setIsHandRaised] = useState(false); //eslint-disable-line no-unused-vars
   const [alertLeaveMeeting, setAlertLeaveMeeting] = useState(false); //eslint-disable-line no-unused-vars
+  const [meetingControls, setMeetingControls] = useState({}); //eslint-disable-line no-unused-vars
   // const navigate = useNavigate();
   const remoteVideoRef = useRef("remoteVideo");
   const localVideoRef = useRef("localVideo");
@@ -80,15 +78,6 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
       [localVideoQuality["1080p"]]: { width: 1920, height: 1080 },
     },
   });
-
-  const handleMeetingNumberChange = (e) => {
-    setMeetingNumber(e.target.value);
-    if (e.target.value.replaceAll(" ", "").length > 8) {
-      setButtonDisabled(false);
-    } else {
-      setButtonDisabled(true);
-    }
-  };
 
   const toggleAudio = () => {
     if (meeting && localMedia.microphoneStream) {
@@ -122,46 +111,59 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
   };
 
   useEffect(() => {
-    console.log("Meeting status changed: " + meetingStatus);
-    switch (meetingStatus) {
-      case MEETING_STATUSES.INACTIVE:
-        setButtonText("Připojit");
-        setOverlayHidden(true);
-        break;
-      case MEETING_STATUSES.ACTIVE:
-      case MEETING_STATUSES.IN_LOBBY:
-        setButtonText("Ukončit");
-        break;
-      case MEETING_STATUSES.JOINING:
-        setButtonText("Připojuji...");
-        break;
-      default:
-        setButtonText("Připojit");
-    }
-  }, [
-    meetingStatus,
-    MEETING_STATUSES.ACTIVE,
-    MEETING_STATUSES.IN_LOBBY,
-    MEETING_STATUSES.JOINING,
-    MEETING_STATUSES.INACTIVE,
-  ]);
+    setControlPanelCallback((data) => {
+      switch (meetingStatus) {
+        case MEETING_STATUSES.INACTIVE:
+          joinMeeting(data);
+          break;
+        case MEETING_STATUSES.ACTIVE:
+          switch (data) {
+            case "toggleAudio":
+              toggleAudio();
+              break;
+            case "toggleVideo":
+              toggleVideo();
+              break;
+            case "toggleRaiseHand":
+              toggleRaiseHand();
+              break;
+            case "leaveMeeting":
+              setAlertLeaveMeeting(true);
+              break;
+            default:
+              console.log(`Unknown meeting control: ${data}`);
+              setAlertLeaveMeeting(true);
+          }
+          break;
+        case MEETING_STATUSES.IN_LOBBY:
+          setAlertLeaveMeeting(true);
+          break;
+        case MEETING_STATUSES.JOINING:
+          leaveMeeting();
+          break;
+        default:
+          break;
+      }
+    });
+  });
 
-  const meetingAction = () => {
-    switch (meetingStatus) {
-      case MEETING_STATUSES.INACTIVE:
-        joinMeeting();
-        break;
-      case MEETING_STATUSES.ACTIVE:
-      case MEETING_STATUSES.IN_LOBBY:
-        setAlertLeaveMeeting(true);
-        break;
-      case MEETING_STATUSES.JOINING:
-        leaveMeeting();
-        break;
-      default:
-        break;
-    }
-  };
+  // //eslint-disable-next-line no-unused-vars
+  // const meetingAction = (meetingNumber) => {
+  //   switch (meetingStatus) {
+  //     case MEETING_STATUSES.INACTIVE:
+  //       joinMeeting(meetingNumber);
+  //       break;
+  //     case MEETING_STATUSES.ACTIVE:
+  //     case MEETING_STATUSES.IN_LOBBY:
+  //       setAlertLeaveMeeting(true);
+  //       break;
+  //     case MEETING_STATUSES.JOINING:
+  //       leaveMeeting();
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // };
 
   const createWebexClient = () => {
     if (webexClient) {
@@ -202,7 +204,7 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
     return true;
   };
 
-  const joinMeeting = async () => {
+  const joinMeeting = async (meetingNumber) => {
     const wxClient = createWebexClient();
     if (!wxClient) {
       return;
@@ -346,24 +348,34 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
 
       // meeting members update
       newMeeting.members.on("all", (event, payload) => {
-        console.log(
-          `Meeting member event: ${event}, payload: ${JSON.stringify(payload)}`
-        );
+        const pload = payload ? payload.payload || payload : {};
+        try {
+          const ploadStr = JSON.stringify(pload);
+          console.log(`Meeting event: ${event}, payload: ${ploadStr}`);
+        } catch (error) {
+          console.error(`Error stringifying payload: ${error}`);
+          console.log(`Meeting event: ${event}`);
+        }
         // eslint-disable-next-line default-case
         switch (event) {
           case "members:update": {
             if (
-              payload.delta &&
-              payload.delta.updated &&
-              payload.delta.updated.length > 0
+              pload.delta &&
+              pload.delta.updated &&
+              pload.delta.updated.length > 0
             ) {
               console.log(
-                "Members updated: " + JSON.stringify(payload.delta.updated)
+                "Members updated: " + JSON.stringify(pload.delta.updated)
               );
-              for (let [key, value] of Object.entries(payload.delta.updated)) {
+              for (let [key, value] of Object.entries(pload.delta.updated)) {
                 console.log(`Member ${key} updated: ${JSON.stringify(value)}`);
-                if (value.isSelf) {
+                if (value.isSelf && value.isInMeeting) {
                   setIsHandRaised(value.isHandRaised);
+                  setIsAudioMuted(value.isAudioMuted);
+                  setIsVideoMuted(value.isVideoMuted);
+                  setIsUnmuteAllowed(
+                    !value.participant.controls.audio.disallowUnmute
+                  );
                 }
               }
             }
@@ -385,20 +397,77 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
     }
   };
 
-  const leaveMeeting = async () => {
+  const leaveMeeting = () => {
     if (!meeting) {
       console.error("Meeting not found");
       return;
     }
     try {
-      await meeting.leave();
-      console.log("Meeting left");
-      setMeetingStatus(MEETING_STATUSES.INACTIVE);
-      setAlertLeaveMeeting(false);
+      meeting.leave().then(() => {
+        console.log("Meeting left");
+        setAlertLeaveMeeting(false);
+        setMeetingStatus(MEETING_STATUSES.INACTIVE);
+        webexClient.meetings.unregister().then(() => {
+          console.log("Meetings unregistered");
+        });
+      });
     } catch (error) {
       console.error(`Error leaving meeting: ${error}`);
     }
   };
+  //eslint-disable-next-line no-unused-vars
+  // const meetingIdForm =
+  //   () => (
+  //     <MeetingIdForm
+  //       meetingStatus={meetingStatus}
+  //       buttonText={buttonText}
+  //     />
+  // );
+
+  useEffect(() => {
+    console.log("Meeting status changed: " + meetingStatus);
+    switch (meetingStatus) {
+      case MEETING_STATUSES.INACTIVE: {
+        const btnText = "Připojit";
+        setButtonText(btnText);
+        setOverlayHidden(true);
+        setControlPanel({
+          id: "id-form",
+          component: <MeetingIdForm />,
+          data: { meetingStatus, buttonText: btnText },
+        });
+        break;
+      }
+      case MEETING_STATUSES.ACTIVE:
+        setControlPanel({
+          id: "meeting-controls",
+          component: <MeetingControlsRedux />,
+          data: {
+            isAudioMuted,
+            isVideoMuted,
+            isUnmuteAllowed,
+            isHandRaised,
+          },
+        });
+        break;
+      case MEETING_STATUSES.IN_LOBBY:
+        setControlPanelData({ meetingStatus, buttonText: "Ukončit" });
+        break;
+      case MEETING_STATUSES.JOINING:
+        setControlPanelData({ meetingStatus, buttonText: "Připojuji..." });
+        break;
+      default:
+        setControlPanelData({ meetingStatus, buttonText: "Připojit" });
+    }
+  }, [
+    meetingStatus,
+    setControlPanel,
+    setControlPanelData,
+    isAudioMuted,
+    isVideoMuted,
+    isUnmuteAllowed,
+    isHandRaised,
+  ]);
 
   return (
     <Box
@@ -433,47 +502,7 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
           </DialogActions>
         </ModalDialog>
       </Modal>
-      <Box
-        width={1280}
-        my={2}
-        display="flex"
-        alignItems="center"
-        gap={4}
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "repeat(1, minmax(80px, 1fr))",
-          gap: 1,
-          mx: "auto",
-        }}
-      >
-        <Grid container spacing={2}>
-          <Grid xs={10}>
-            <Input
-              label="Meeting Number"
-              type="text"
-              id="meetingNunber"
-              name="meetingNumber"
-              variant="outlined"
-              onChange={handleMeetingNumberChange}
-            />
-          </Grid>
-          <Grid xs={2}>
-            <Button
-              variant="soft"
-              disabled={buttonDisabled}
-              onClick={meetingAction}
-              startDecorator={
-                meetingStatus === MEETING_STATUSES.JOINING ? (
-                  <CircularProgress variant="solid" />
-                ) : null
-              }
-              sx={{ width: 1, mx: "auto" }}
-            >
-              {buttonText}
-            </Button>
-          </Grid>
-        </Grid>
-      </Box>
+      {/* <MeetingIdForm /> */}
       <Box
         visibility={
           meetingStatus !== MEETING_STATUSES.INACTIVE &&
@@ -569,57 +598,18 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
         Remote Audio
         <audio id="remote-audio" controls autoPlay ref={remoteAudioRef} />
       </Box>
-      <Box
-        my={2}
-        display="flex"
-        alignItems="center"
-        gap={4}
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "repeat(1, minmax(80px, 1fr))",
-          gap: 1,
-          mx: "auto",
-        }}
-      >
-        <ButtonGroup
-          spacing="0.5rem"
-          variant="soft"
-          sx={{ border: "4px" }}
-          hidden={meetingStatus !== MEETING_STATUSES.ACTIVE}
-        >
-          <IconButton
-            color={isAudioMuted ? "danger" : "primary"}
-            onClick={toggleAudio}
-            sx={{ width: buttonSides, height: buttonSides }}
-          >
-            {/* Audio {isAudioMuted ? "Zap." : "Vyp."} */}
-            {isAudioMuted ? (
-              <MicOff fontSize="large" />
-            ) : (
-              <Mic fontSize="large" />
-            )}
-          </IconButton>
-          <IconButton
-            color={isVideoMuted ? "danger" : "primary"}
-            onClick={toggleVideo}
-            sx={{ width: buttonSides, height: buttonSides }}
-          >
-            {/* Video {isVideoMuted ? "Zap." : "Vyp."} */}
-            {isVideoMuted ? (
-              <VideocamOff fontSize="large" />
-            ) : (
-              <Videocam fontSize="large" />
-            )}
-          </IconButton>
-          <IconButton
-            color={isHandRaised ? "danger" : "primary"}
-            onClick={toggleRaiseHand}
-            sx={{ width: buttonSides, height: buttonSides }}
-          >
-            <BackHand fontSize="large" />
-          </IconButton>
-        </ButtonGroup>
-      </Box>
+      {/* <MeetingControls
+        hidden={meetingStatus !== MEETING_STATUSES.ACTIVE}
+        isAudioMuted={isAudioMuted}
+        isUnmuteAllowed={isUnmuteAllowed}
+        isVideoMuted={isVideoMuted}
+        isHandRaised={isHandRaised}
+        toggleAudio={toggleAudio}
+        toggleVideo={toggleVideo}
+        toggleRaiseHand={toggleRaiseHand}
+        leaveMeeting={() => setAlertLeaveMeeting(true)}
+      /> */}
+
       {/* <Box>
         Local Audio
         <audio id="local-audio" muted controls ref={localAudioRef} />
@@ -631,6 +621,11 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
 MeetingManager.propTypes = {
   user: PropTypes.object,
   webexConfig: PropTypes.object.isRequired,
+  setControlPanel: PropTypes.func,
+  setControlPanelCallback: PropTypes.func,
+  setControlPanelComponent: PropTypes.func,
+  setControlPanelData: PropTypes.func,
+  setControlPanelId: PropTypes.func,
 };
 
 function mapStateToProps(state) {
@@ -640,4 +635,12 @@ function mapStateToProps(state) {
   };
 }
 
-export default connect(mapStateToProps)(MeetingManager);
+const mapDispatchToProps = {
+  setControlPanel,
+  setControlPanelCallback,
+  setControlPanelComponent,
+  setControlPanelData,
+  setControlPanelId,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(MeetingManager);
