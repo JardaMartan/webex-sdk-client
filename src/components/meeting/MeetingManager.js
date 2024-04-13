@@ -51,6 +51,7 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
   const [overlayMessage, setOverlayMessage] = useState(""); //eslint-disable-line no-unused-vars
   const [isAudioMuted, setIsAudioMuted] = useState(false); //eslint-disable-line no-unused-vars
   const [isVideoMuted, setIsVideoMuted] = useState(false); //eslint-disable-line no-unused-vars
+  const [isUnmuteAllowed, setIsUnmuteAllowed] = useState(false); //eslint-disable-line no-unused-vars
   const [isHandRaised, setIsHandRaised] = useState(false); //eslint-disable-line no-unused-vars
   const [alertLeaveMeeting, setAlertLeaveMeeting] = useState(false); //eslint-disable-line no-unused-vars
   // const navigate = useNavigate();
@@ -346,24 +347,34 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
 
       // meeting members update
       newMeeting.members.on("all", (event, payload) => {
-        console.log(
-          `Meeting member event: ${event}, payload: ${JSON.stringify(payload)}`
-        );
+        const pload = payload ? payload.payload || payload : {};
+        try {
+          const ploadStr = JSON.stringify(pload);
+          console.log(`Meeting event: ${event}, payload: ${ploadStr}`);
+        } catch (error) {
+          console.error(`Error stringifying payload: ${error}`);
+          console.log(`Meeting event: ${event}`);
+        }
         // eslint-disable-next-line default-case
         switch (event) {
           case "members:update": {
             if (
-              payload.delta &&
-              payload.delta.updated &&
-              payload.delta.updated.length > 0
+              pload.delta &&
+              pload.delta.updated &&
+              pload.delta.updated.length > 0
             ) {
               console.log(
-                "Members updated: " + JSON.stringify(payload.delta.updated)
+                "Members updated: " + JSON.stringify(pload.delta.updated)
               );
-              for (let [key, value] of Object.entries(payload.delta.updated)) {
+              for (let [key, value] of Object.entries(pload.delta.updated)) {
                 console.log(`Member ${key} updated: ${JSON.stringify(value)}`);
-                if (value.isSelf) {
+                if (value.isSelf && value.isInMeeting) {
                   setIsHandRaised(value.isHandRaised);
+                  setIsAudioMuted(value.isAudioMuted);
+                  setIsVideoMuted(value.isVideoMuted);
+                  setIsUnmuteAllowed(
+                    !value.participant.controls.audio.disallowUnmute
+                  );
                 }
               }
             }
@@ -588,6 +599,7 @@ const MeetingManager = ({ user, webexConfig, ...props }) => {
           hidden={meetingStatus !== MEETING_STATUSES.ACTIVE}
         >
           <IconButton
+            disabled={!isUnmuteAllowed && isAudioMuted}
             color={isAudioMuted ? "danger" : "primary"}
             onClick={toggleAudio}
             sx={{ width: buttonSides, height: buttonSides }}
