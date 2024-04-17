@@ -397,10 +397,10 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         console.log("Meeting left");
         setAlertLeaveMeeting(false);
         setMeetingStatus(MEETING_STATUSES.INACTIVE);
-        webexClient.meetings.unregister().then(() => {
+        /*        webexClient.meetings.unregister().then(() => {
           console.log("Meetings unregistered");
           //   setMeeting(null);
-        });
+        });*/
       });
     } catch (error) {
       console.error(`Error leaving meeting: ${error}`);
