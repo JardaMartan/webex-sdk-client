@@ -20,6 +20,7 @@ import {
   MenuItem,
   MenuButton,
   Divider,
+  // Input,
   Sheet, //eslint-disable-line no-unused-vars
 } from "@mui/joy";
 
@@ -30,11 +31,20 @@ import {
 // import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 // import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import { useMeeting } from "../meeting/MeetingContext";
 
 // eslint-disable-next-line no-unused-vars
 const AppHeader = ({ logoutUser, user, ...props }) => {
   // const logoIcon = <i className="icon icon-cisco-logo" />;
   const navigate = useNavigate();
+  const contextState = useMeeting();
+  //eslint-disable-next-line no-unused-vars
+  // const [controlPanel, setControlPanel] = useState(
+  //   <div>
+  //     <Input />
+  //     <Button variant="contained">Hledat</Button>
+  //   </div>
+  // );
 
   const getAvatar = () => {
     if (user.webexUser && user.webexUser.avatar) {
@@ -157,33 +167,11 @@ const AppHeader = ({ logoutUser, user, ...props }) => {
         >
           Konferenční klient
         </Typography>
+        {contextState.controlPanel.component}
         <Box sx={{ flexGrow: 1 }} />
         {topbarRight}
       </Toolbar>
     </AppBar>
-
-    // <Box
-    //   sx={{
-    //     display: "flex",
-    //     flexGrow: 1,
-    //     justifyContent: "space-between",
-    //     p: 2,
-    //   }}
-    // >
-    //   <Stack
-    //     direction="row"
-    //     justifyContent="center"
-    //     alignItems="center"
-    //     spacing={1}
-    //     sx={{ display: { xs: "none", sm: "flex" } }}
-    //   >
-    //     <Sheet>
-    //       <h1>Konferenční klient</h1>
-    //     </Sheet>
-    //   </Stack>
-
-    //   {topbarRight}
-    // </Box>
   );
 };
 

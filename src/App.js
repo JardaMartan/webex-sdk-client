@@ -1,21 +1,23 @@
 import React from "react";
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
-import MeetingManager from "./components/meeting/MeetingManager";
+import MeetingView from "./components/meeting/MeetingView";
 import AppHeader from "./components/header/AppHeader";
 import LoginPage from "./components/login/Login";
-// import Test from "./components/meeting/Test";
+import MeetingProvider from "./components/meeting/MeetingContext";
 
-function App() {
+const App = () => {
   return (
     <div className="App">
-      <AppHeader />
-      <Routes>
-        <Route exact path="/" element={<MeetingManager />} />
-        <Route path="/login" element={<LoginPage />} />
-      </Routes>
+      <MeetingProvider>
+        <AppHeader />
+        <Routes>
+          <Route exact path="/" element={<MeetingView />} />
+          <Route path="/login" element={<LoginPage />} />
+        </Routes>
+      </MeetingProvider>
     </div>
   );
-}
+};
 
 export default App;

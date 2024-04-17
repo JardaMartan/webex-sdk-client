@@ -1,31 +1,42 @@
 import React from "react";
-import PropTypes from "prop-types";
 import Sheet from "@mui/joy/Sheet";
+import ModalClose from "@mui/joy/ModalClose";
 import { styled } from "@mui/system";
 import { extendTheme } from "@mui/joy/styles";
+import { useMeeting, useMeetingDispatch } from "./MeetingContext";
+import * as actionTypes from "./MeetingContextActionTypes";
 
-const RemoteVideoOverlay = ({ message = "", hidden = true }) => {
+const RemoteVideoOverlay = () => {
   const Div = styled("div")(({ theme }) => ({
     backgroundColor: `rgba(${theme.vars.palette.primary.mainChannel} / 0.2)`,
   }));
+  const contextState = useMeeting();
+  const dispatch = useMeetingDispatch();
 
   const theme = extendTheme();
 
-  if (!hidden) {
+  if (!contextState.overlay.hidden) {
     return (
       <Div theme={theme}>
         <Sheet color="neutral" variant="soft" sx={{ p: 4, zIndex: 10 }}>
-          {message && <div>{message}</div>}
+          {contextState.overlay.canClose && (
+            <ModalClose
+              onClick={() => {
+                dispatch({
+                  type: actionTypes.SET_OVERLAY,
+                  overlay: { hidden: true, message: "" },
+                });
+              }}
+            />
+          )}
+          {contextState.overlay.message && (
+            <div>{contextState.overlay.message}</div>
+          )}
         </Sheet>
       </Div>
     );
   }
   return null;
-};
-
-RemoteVideoOverlay.propTypes = {
-  message: PropTypes.string,
-  hidden: PropTypes.bool,
 };
 
 export default RemoteVideoOverlay;
