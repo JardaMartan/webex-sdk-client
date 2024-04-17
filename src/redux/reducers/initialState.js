@@ -19,16 +19,6 @@ const initialState = {
       message: "Application started",
     },
   ],
-  app: {
-    controlPanel: {
-      id: "none",
-      component: <></>,
-      callback: (data) => {
-        console.log(`callback clicked for ${data}`);
-      },
-      data: {},
-    },
-  },
 };
 
 export default initialState;

@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { Box, ButtonGroup, IconButton } from "@mui/joy";
 import {
   Mic,
@@ -10,25 +9,30 @@ import {
   VideocamOff,
   BackHand,
   Close,
+  Dialpad,
 } from "@mui/icons-material";
+import {
+  useMeeting,
+  useMeetingAction,
+  useMeetingDispatch,
+} from "./MeetingContext";
+import { MEETING_STATUSES } from "../../constants/meeting";
+import * as actionTypes from "./MeetingContextActionTypes";
 
-const MeetingControls = ({
-  hidden = false,
-  isAudioMuted,
-  isUnmuteAllowed,
-  isVideoMuted,
-  isHandRaised,
-  toggleAudio,
-  toggleVideo,
-  toggleRaiseHand,
-  leaveMeeting,
-}) => {
-  const buttonSides = 64;
+const MeetingControls = () => {
+  const buttonSides = 48;
+  const contextState = useMeeting();
+  const dispatch = useMeetingDispatch();
+  const { setHandRaised, setAudioMuted, setVideoMuted } = useMeetingAction();
 
   return (
     <Box
-      visibility={hidden ? "hidden" : "visible"}
-      my={2}
+      visibility={
+        contextState.meetingStatus !== MEETING_STATUSES.ACTIVE
+          ? "hidden"
+          : "visible"
+      }
+      // my={2}
       display="flex"
       alignItems="center"
       gap={4}
@@ -41,40 +45,63 @@ const MeetingControls = ({
     >
       <ButtonGroup spacing="0.5rem" variant="soft" sx={{ border: "4px" }}>
         <IconButton
-          disabled={!isUnmuteAllowed && isAudioMuted}
-          color={isAudioMuted ? "danger" : "primary"}
-          onClick={toggleAudio}
+          disabled={!contextState.isUnmuteAllowed && contextState.isAudioMuted}
+          color={contextState.isAudioMuted ? "danger" : "primary"}
+          onClick={() => {
+            setAudioMuted(!contextState.isAudioMuted);
+          }}
           sx={{ width: buttonSides, height: buttonSides }}
         >
           {/* Audio {isAudioMuted ? "Zap." : "Vyp."} */}
-          {isAudioMuted ? (
+          {contextState.isAudioMuted ? (
             <MicOff fontSize="large" />
           ) : (
             <Mic fontSize="large" />
           )}
         </IconButton>
         <IconButton
-          color={isVideoMuted ? "danger" : "primary"}
-          onClick={toggleVideo}
+          color={contextState.isVideoMuted ? "danger" : "primary"}
+          onClick={() => {
+            setVideoMuted(!contextState.isVideoMuted);
+          }}
           sx={{ width: buttonSides, height: buttonSides }}
         >
           {/* Video {isVideoMuted ? "Zap." : "Vyp."} */}
-          {isVideoMuted ? (
+          {contextState.isVideoMuted ? (
             <VideocamOff fontSize="large" />
           ) : (
             <Videocam fontSize="large" />
           )}
         </IconButton>
         <IconButton
-          color={isHandRaised ? "danger" : "primary"}
-          onClick={toggleRaiseHand}
+          color={contextState.isHandRaised ? "danger" : "primary"}
+          onClick={() => {
+            setHandRaised(!contextState.isHandRaised);
+          }}
           sx={{ width: buttonSides, height: buttonSides }}
         >
           <BackHand fontSize="large" />
         </IconButton>
         <IconButton
+          color="primary"
+          onClick={() => {
+            dispatch({
+              type: actionTypes.SET_DTMF_PANEL,
+              dtmfPanel: { hidden: !contextState.dtmfPanel.hidden },
+            });
+          }}
+          sx={{ width: buttonSides, height: buttonSides }}
+        >
+          <Dialpad fontSize="large" />
+        </IconButton>
+        <IconButton
           color="danger"
-          onClick={leaveMeeting}
+          onClick={() =>
+            dispatch({
+              type: actionTypes.SET_ALERT_LEAVE_MEETING,
+              alertLeaveMeeting: true,
+            })
+          }
           sx={{ width: buttonSides, height: buttonSides }}
         >
           <Close fontSize="large" />
@@ -84,16 +111,6 @@ const MeetingControls = ({
   );
 };
 
-MeetingControls.propTypes = {
-  hidden: PropTypes.bool,
-  isAudioMuted: PropTypes.bool.isRequired,
-  isUnmuteAllowed: PropTypes.bool.isRequired,
-  isVideoMuted: PropTypes.bool.isRequired,
-  isHandRaised: PropTypes.bool.isRequired,
-  toggleAudio: PropTypes.func.isRequired,
-  toggleVideo: PropTypes.func.isRequired,
-  toggleRaiseHand: PropTypes.func.isRequired,
-  leaveMeeting: PropTypes.func.isRequired,
-};
+MeetingControls.propTypes = {};
 
 export default MeetingControls;

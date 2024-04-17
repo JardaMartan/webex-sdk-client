@@ -30,19 +30,14 @@ import {
 // import HelpRoundedIcon from "@mui/icons-material/HelpRounded";
 // import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
-import { setControlPanel } from "../../redux/actions/appActions";
 // import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import { useMeeting } from "../meeting/MeetingContext";
 
 // eslint-disable-next-line no-unused-vars
-const AppHeader = ({
-  logoutUser,
-  user,
-  controlPanel,
-  setControlPanel,
-  ...props
-}) => {
+const AppHeader = ({ logoutUser, user, ...props }) => {
   // const logoIcon = <i className="icon icon-cisco-logo" />;
   const navigate = useNavigate();
+  const contextState = useMeeting();
   //eslint-disable-next-line no-unused-vars
   // const [controlPanel, setControlPanel] = useState(
   //   <div>
@@ -172,7 +167,7 @@ const AppHeader = ({
         >
           Konferenční klient
         </Typography>
-        {controlPanel.component}
+        {contextState.controlPanel.component}
         <Box sx={{ flexGrow: 1 }} />
         {topbarRight}
       </Toolbar>
@@ -183,20 +178,16 @@ const AppHeader = ({
 AppHeader.propTypes = {
   user: PropTypes.object.isRequired,
   logoutUser: PropTypes.func.isRequired,
-  controlPanel: PropTypes.object.isRequired,
-  setControlPanel: PropTypes.func,
 };
 
 const mapStateToProps = (state) => {
   return {
     user: state.user,
-    controlPanel: state.app.controlPanel,
   };
 };
 
 const mapDispatchToProps = {
   logoutUser,
-  setControlPanel,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(AppHeader);

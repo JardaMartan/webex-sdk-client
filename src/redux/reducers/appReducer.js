@@ -2,11 +2,15 @@ import * as types from "../actions/actionTypes";
 import initialState from "./initialState";
 
 const appReducer = (state = initialState.app, action) => {
-  console.log(
-    `appReducer, state: ${JSON.stringify(state)}\naction: ${JSON.stringify(
-      action
-    )}`
-  );
+  try {
+    const actStr = JSON.stringify(action);
+    console.log(
+      `appReducer, state: ${JSON.stringify(state)}\naction: ${actStr}`
+    );
+  } catch (error) {
+    console.error(`Error stringifying payload: ${error}`);
+    console.log(`sdkReducer, state: ${JSON.stringify(state)}`);
+  }
   switch (action.type) {
     case types.SET_CONTROL_PANEL:
       return {

@@ -1,19 +1,62 @@
 import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
 import { Box, Grid, Input, Button, CircularProgress } from "@mui/joy";
+import {
+  useMeeting,
+  useMeetingDispatch,
+  useMeetingAction,
+} from "./MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
+import * as actionTypes from "./MeetingContextActionTypes";
 
-const MeetingIdForm = ({ meetingAction, buttonText, meetingStatus }) => {
-  const [buttonDisabled, setButtonDisabled] = useState(true);
+const MeetingIdForm = () => {
+  const contextState = useMeeting();
+  const dispatch = useMeetingDispatch();
+  const { joinMeeting, leaveMeeting } = useMeetingAction();
   const [meetingNumber, setMeetingNumber] = useState("");
+  const [buttonText, setButtonText] = useState("Připojit");
+
+  const meetingAction = (meetingNumber) => {
+    switch (contextState.meetingStatus) {
+      case MEETING_STATUSES.INACTIVE:
+        joinMeeting(meetingNumber).then(() => {
+          console.log("Meeting joined");
+        });
+        break;
+      case MEETING_STATUSES.ACTIVE:
+      case MEETING_STATUSES.IN_LOBBY:
+        dispatch({
+          type: actionTypes.SET_ALERT_LEAVE_MEETING,
+          alertLeaveMeeting: true,
+        });
+        break;
+      case MEETING_STATUSES.JOINING:
+        leaveMeeting();
+        break;
+      default:
+        break;
+    }
+  };
 
   const handleMeetingNumberChange = (event) => {
     setMeetingNumber(event.target.value);
   };
 
   useEffect(() => {
-    setButtonDisabled(meetingNumber.trim().length === 0);
-  }, [meetingNumber]);
+    switch (contextState.meetingStatus) {
+      case MEETING_STATUSES.INACTIVE:
+        setButtonText("Připojit");
+        break;
+      case MEETING_STATUSES.ACTIVE:
+      case MEETING_STATUSES.IN_LOBBY:
+        setButtonText("Opustit");
+        break;
+      case MEETING_STATUSES.JOINING:
+        setButtonText("Připojuji se...");
+        break;
+      default:
+        break;
+    }
+  }, [contextState.meetingStatus, setButtonText]);
 
   return (
     <Box
@@ -44,12 +87,15 @@ const MeetingIdForm = ({ meetingAction, buttonText, meetingStatus }) => {
         <Grid xs={2}>
           <Button
             variant="soft"
-            disabled={buttonDisabled}
+            disabled={
+              contextState.meetingStatus === MEETING_STATUSES.INACTIVE &&
+              meetingNumber.trim().length === 0
+            }
             onClick={() => {
               meetingAction(meetingNumber);
             }}
             startDecorator={
-              meetingStatus === MEETING_STATUSES.JOINING ? (
+              contextState.meetingStatus === MEETING_STATUSES.JOINING ? (
                 <CircularProgress variant="solid" />
               ) : null
             }
@@ -61,12 +107,6 @@ const MeetingIdForm = ({ meetingAction, buttonText, meetingStatus }) => {
       </Grid>
     </Box>
   );
-};
-
-MeetingIdForm.propTypes = {
-  meetingAction: PropTypes.func.isRequired,
-  buttonText: PropTypes.string.isRequired,
-  meetingStatus: PropTypes.string.isRequired,
 };
 
 export default MeetingIdForm;
