@@ -67,13 +67,6 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
           ...state,
           dtmfPanel: { ...state.dtmfPanel, ...action.dtmfPanel },
         };
-      //   case actionTypes.JOIN_MEETING:
-      //     joinMeeting(action.meetingNumber);
-      //     return state;
-      //   case actionTypes.LEAVE_MEETING:
-      //     leaveMeeting();
-      //     setAlertLeaveMeeting(true);
-      //     return state;
       default:
         return state;
     }
@@ -324,9 +317,14 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         console.log("Meeting guest admitted");
         setMeetingStatus(MEETING_STATUSES.ACTIVE);
         setOverlay({ hidden: true, message: "" });
-        newMeeting.addMedia(mediaOptions).then(() => {
-          console.log("Media added");
-        });
+        newMeeting
+          .addMedia(mediaOptions)
+          .then(() => {
+            console.log("Media added");
+          })
+          .catch((error) => {
+            console.error(`Error adding media: ${error}`);
+          });
       });
 
       newMeeting.on("meeting:self:unmutedByOthers", () => {
@@ -403,19 +401,24 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
       return;
     }
     try {
-      meeting.leave().then(() => {
-        console.log("Meeting left");
-        setAlertLeaveMeeting(false);
-        setMeetingStatus(MEETING_STATUSES.INACTIVE);
-        if (webexClient && webexClient.meetings.registered) {
-          setTimeout(() => {
-            webexClient.meetings.unregister().then(() => {
-              console.log("Meetings unregistered");
-              //   setMeeting(null);
-            }, 3000);
-          });
-        }
-      });
+      meeting
+        .leave()
+        .then(() => {
+          console.log("Meeting left");
+          setAlertLeaveMeeting(false);
+          setMeetingStatus(MEETING_STATUSES.INACTIVE);
+          if (webexClient && webexClient.meetings.registered) {
+            setTimeout(() => {
+              webexClient.meetings.unregister().then(() => {
+                console.log("Meetings unregistered");
+                //   setMeeting(null);
+              }, 3000);
+            });
+          }
+        })
+        .catch((error) => {
+          console.error(`Error leaving meeting: ${error}`);
+        });
     } catch (error) {
       console.error(`Error leaving meeting: ${error}`);
     }
@@ -426,6 +429,9 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
       .raiseOrLowerHand(meeting.members.selfId, isHandRaised)
       .then(() => {
         console.log("Hand raise requested");
+      })
+      .catch((error) => {
+        console.error(`Error raising hand: ${error}`);
       });
   };
 
@@ -457,13 +463,18 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         digit
       )
     ) {
-      meeting.sendDTMF(digit).then(() => {
-        console.log(`DTMF sent: ${digit}`);
-        dispatch({
-          type: actionTypes.SET_DTMF_PANEL,
-          dtmfPanel: { input: state.dtmfPanel.input + digit },
+      meeting
+        .sendDTMF(digit)
+        .then(() => {
+          console.log(`DTMF sent: ${digit}`);
+          dispatch({
+            type: actionTypes.SET_DTMF_PANEL,
+            dtmfPanel: { input: state.dtmfPanel.input + digit },
+          });
+        })
+        .catch((error) => {
+          console.error(`Error sending DTMF: ${error}`);
         });
-      });
     } else {
       console.error(`Invalid DTMF digit: ${digit}`);
     }
