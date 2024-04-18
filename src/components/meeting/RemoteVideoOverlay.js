@@ -3,8 +3,11 @@ import Sheet from "@mui/joy/Sheet";
 import ModalClose from "@mui/joy/ModalClose";
 import { styled } from "@mui/system";
 import { extendTheme } from "@mui/joy/styles";
-import { useMeeting, useMeetingDispatch } from "./MeetingContext";
-import * as actionTypes from "./MeetingContextActionTypes";
+import {
+  useMeeting,
+  useMeetingDispatch,
+} from "../meetingcontext/MeetingContext";
+import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 
 const RemoteVideoOverlay = () => {
   const Div = styled("div")(({ theme }) => ({

@@ -16,9 +16,9 @@ import {
   useMeeting,
   useMeetingAction,
   useMeetingDispatch,
-} from "./MeetingContext";
+} from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
-import * as actionTypes from "./MeetingContextActionTypes";
+import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 import DtmfPanel from "./DtmfPanel";
 
 const MeetingView = () => {

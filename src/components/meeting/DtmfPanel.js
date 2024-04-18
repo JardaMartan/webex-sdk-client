@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, ButtonGroup, Input, Stack, Box } from "@mui/joy";
 
-import { useMeeting, useMeetingAction } from "./MeetingContext";
+import { useMeeting, useMeetingAction } from "../meetingcontext/MeetingContext";
 
 const DtmfPanel = () => {
   const contextState = useMeeting();

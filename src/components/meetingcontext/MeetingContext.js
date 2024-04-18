@@ -10,8 +10,8 @@ import propTypes from "prop-types";
 import { connect } from "react-redux";
 import { init as initWebex } from "webex";
 import { MEETING_STATUSES } from "../../constants/meeting";
-import MeetingIdForm from "./MeetingIdForm";
-import MeetingControls from "./MeetingControls";
+import MeetingIdForm from "../meeting/MeetingIdForm";
+import MeetingControls from "../meeting/MeetingControls";
 
 const MeetingContext = createContext(null);
 const MeetingDispatchContext = createContext(null);
@@ -32,11 +32,11 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
       case actionTypes.SET_HAND_RAISED:
         return { ...state, isHandRaised: action.isHandRaised };
       case actionTypes.SET_AUDIO_MUTED:
-        if (!state.overlayHidden && !action.isAudioMuted) {
+        if (!state.overlay.hidden && !action.isAudioMuted) {
           return {
             ...state,
             isAudioMuted: action.isAudioMuted,
-            overlayHidden: true,
+            overlay: { hidden: true, message: "" },
           };
         }
         return { ...state, isAudioMuted: action.isAudioMuted };
@@ -133,6 +133,16 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         });
         setOverlay({ hidden: true, message: "" });
         break;
+      case MEETING_STATUSES.INACTIVE:
+        setControlPanel(
+          user.loggedIn
+            ? {
+                name: "meeting-id-form",
+                component: <MeetingIdForm />,
+              }
+            : { name: "none", component: <></> }
+        );
+        break;
       default:
         setControlPanel(
           user.loggedIn
@@ -144,7 +154,7 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         );
         break;
     }
-  }, [state.meetingStatus, user.loggedIn]);
+  }, [state.meetingStatus, user.loggedIn, webexClient]);
 
   const createWebexClient = () => {
     if (webexClient) {
@@ -397,10 +407,14 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         console.log("Meeting left");
         setAlertLeaveMeeting(false);
         setMeetingStatus(MEETING_STATUSES.INACTIVE);
-        /*        webexClient.meetings.unregister().then(() => {
-          console.log("Meetings unregistered");
-          //   setMeeting(null);
-        });*/
+        if (webexClient && webexClient.meetings.registered) {
+          setTimeout(() => {
+            webexClient.meetings.unregister().then(() => {
+              console.log("Meetings unregistered");
+              //   setMeeting(null);
+            }, 3000);
+          });
+        }
       });
     } catch (error) {
       console.error(`Error leaving meeting: ${error}`);

@@ -4,9 +4,9 @@ import {
   useMeeting,
   useMeetingDispatch,
   useMeetingAction,
-} from "./MeetingContext";
+} from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
-import * as actionTypes from "./MeetingContextActionTypes";
+import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 
 const MeetingIdForm = () => {
   const contextState = useMeeting();

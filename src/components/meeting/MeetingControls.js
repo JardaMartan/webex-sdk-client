@@ -15,9 +15,9 @@ import {
   useMeeting,
   useMeetingAction,
   useMeetingDispatch,
-} from "./MeetingContext";
+} from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
-import * as actionTypes from "./MeetingContextActionTypes";
+import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 
 const MeetingControls = () => {
   const buttonSides = 48;

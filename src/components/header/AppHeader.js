@@ -31,7 +31,7 @@ import {
 // import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 // import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import { useMeeting } from "../meeting/MeetingContext";
+import { useMeeting } from "../meetingcontext/MeetingContext";
 
 // eslint-disable-next-line no-unused-vars
 const AppHeader = ({ logoutUser, user, ...props }) => {

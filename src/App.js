@@ -4,7 +4,7 @@ import { Routes, Route } from "react-router-dom";
 import MeetingView from "./components/meeting/MeetingView";
 import AppHeader from "./components/header/AppHeader";
 import LoginPage from "./components/login/Login";
-import MeetingProvider from "./components/meeting/MeetingContext";
+import MeetingProvider from "./components/meetingcontext/MeetingContext";
 
 const App = () => {
   return (
