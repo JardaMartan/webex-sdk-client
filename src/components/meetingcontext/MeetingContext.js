@@ -369,13 +369,20 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
               );
               for (let [key, value] of Object.entries(pload.delta.updated)) {
                 console.log(`Member ${key} updated: ${JSON.stringify(value)}`);
-                if (value.isSelf && value.isInMeeting) {
-                  setIsHandRaised(value.isHandRaised);
-                  setIsAudioMuted(value.isAudioMuted);
-                  setIsVideoMuted(value.isVideoMuted);
-                  setIsUnmuteAllowed(
-                    !value.participant.controls.audio.disallowUnmute
-                  );
+                if (value.isSelf) {
+                  if (value.isInMeeting) {
+                    setIsHandRaised(value.isHandRaised);
+                    setIsAudioMuted(value.isAudioMuted);
+                    setIsVideoMuted(value.isVideoMuted);
+                    setIsUnmuteAllowed(
+                      !value.participant.controls.audio.disallowUnmute
+                    );
+                  } else if (value.isInLobby) {
+                    // in lobby
+                  } else {
+                    // not in meeting
+                    leaveMeeting();
+                  }
                 }
               }
             }
@@ -396,8 +403,25 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
   };
 
   const leaveMeeting = () => {
+    function unregisterMeeting() {
+      setAlertLeaveMeeting(false);
+      setMeetingStatus(MEETING_STATUSES.INACTIVE);
+      if (webexClient && webexClient.meetings.registered) {
+        setTimeout(() => {
+          webexClient.meetings.unregister().then(() => {
+            console.log("Meetings unregistered");
+            setMeeting(null);
+          }, 3000);
+        });
+      } else {
+        console.log("Meetings not registered");
+        setMeeting(null);
+      }
+    }
+
     if (!meeting) {
       console.error("Meeting not found");
+      unregisterMeeting();
       return;
     }
     try {
@@ -405,16 +429,7 @@ export const MeetingProvider = ({ children, user, webexConfig, ...props }) => {
         .leave()
         .then(() => {
           console.log("Meeting left");
-          setAlertLeaveMeeting(false);
-          setMeetingStatus(MEETING_STATUSES.INACTIVE);
-          if (webexClient && webexClient.meetings.registered) {
-            setTimeout(() => {
-              webexClient.meetings.unregister().then(() => {
-                console.log("Meetings unregistered");
-                //   setMeeting(null);
-              }, 3000);
-            });
-          }
+          unregisterMeeting();
         })
         .catch((error) => {
           console.error(`Error leaving meeting: ${error}`);
