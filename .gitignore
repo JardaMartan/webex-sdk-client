@@ -49,7 +49,6 @@ src/api/webexConfig.kp.json
 .vscode
 
 webpack.config.kp.js
-webpack.config.prod.js
 
 # webex config
 src/api/webexConfig.json
