@@ -19,3 +19,8 @@ Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
+
+### `npm run build`
+
+Builds the app for production to the `build` folder.\
+Check and modify [webpack.config.prod.js](./webpack.config.prod.js) for the production build. **publicPath** and **ROOT_URL** should be set to the production URL. Do not forget to set the hosting web server CORS settings to allow the Webex API calls. Check for example [here](https://stackoverflow.com/questions/32273606/how-to-enable-cors-for-apache-httpd-server-step-by-step-process) for Apache and [here](https://enable-cors.org/server.html) for other servers.
