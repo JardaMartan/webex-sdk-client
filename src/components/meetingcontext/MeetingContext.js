@@ -63,11 +63,7 @@ export const MeetingProvider = ({
 }) => {
   const [webexClient, setWebexClient] = useState(null);
   const [meeting, setMeeting] = useState(null);
-  // const [mediaOptions, setMediaOptions] = useState({
-  //   localStreams: {},
-  //   allowMediaInLobby: false,
-  // });
-  const [shoudAddMediaToMeeting, setShouldAddMediaToMeeting] = useState(false);
+  const [addMediaOnceReady, setAddMediaOnceReady] = useState(false);
 
   const meetingReducer = (state, action) => {
     // console.log(
@@ -203,49 +199,14 @@ export const MeetingProvider = ({
     }
   }, [state.meetingStatus, user.loggedIn]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  // useEffect(() => {
-  //   console.log("Local media changed");
-  //   setLocalMedia({
-  //     ...(state.localMedia.audio ? { audio: state.localMedia.audio } : null),
-  //     ...(state.localMedia.video ? { video: state.localMedia.video } : null),
-  //   });
-  //   setMediaOptions({
-  //     localStreams: {
-  //       ...(state.localMedia.audio
-  //         ? { microphone: state.localMedia.audio }
-  //         : null),
-  //       ...(state.localMedia.video ? { camera: state.localMedia.video } : null),
-  //     },
-  //     allowMediaInLobby: false,
-  //   });
-  // }, [state.localMedia.audio, state.localMedia.video]); //eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (meeting) {
       switch (state.meetingStatus) {
         case MEETING_STATUSES.ACTIVE:
           break;
         case MEETING_STATUSES.IN_MEETING:
-          const mOptions = {
-            localStreams: {
-              microphone: state.localMedia.audio,
-              camera: state.localMedia.video,
-            },
-            allowMediaInLobby: false,
-          };
-          console.log(
-            "About to add media to the meeting: ",
-            JSON.stringify(mOptions)
-          );
-          meeting
-            .addMedia(mOptions)
-            .then(() => {
-              console.log("Media added");
-              setShouldAddMediaToMeeting(false); // addMedia() should be run only at the meeting join, later media changes are handled using (un)publisStreams()
-            })
-            .catch((error) => {
-              console.error(`Error adding media: ${error}`);
-            });
+          // addMediaToMeeting();
+          setAddMediaOnceReady(true);
           break;
         case MEETING_STATUSES.INACTIVE:
           console.log("About to stop media streams");
@@ -277,6 +238,48 @@ export const MeetingProvider = ({
     }
   }, [webexConfig.accessToken, webexClient]);
 
+  async function addAudioVideoToMeeting() {
+    console.log("Existing meeting media: ", meeting?.currentMediaStatus);
+    const camOption =
+      state.localMedia.video && !meeting?.currentMediaStatus?.video
+        ? { camera: state.localMedia.video }
+        : null;
+    const micOption =
+      state.localMedia.audio && !meeting?.currentMediaStatus?.audio
+        ? { microphone: state.localMedia.audio }
+        : null;
+    if (!camOption && !micOption) {
+      console.log("No media to add to the meeting");
+      return;
+    }
+
+    const mOptions = {
+      localStreams: {
+        ...camOption,
+        ...micOption,
+      },
+      allowMediaInLobby: false,
+    };
+    console.log(
+      "About to add media to the meeting: ",
+      JSON.stringify(mOptions)
+    );
+
+    try {
+      await meeting.addMedia(mOptions);
+      console.log("Media added");
+    } catch (error) {
+      console.error(`Error adding media: ${error}`);
+    }
+  }
+
+  useEffect(() => {
+    if (addMediaOnceReady && state.localMedia.video && state.localMedia.audio) {
+      addAudioVideoToMeeting();
+      setAddMediaOnceReady(false);
+    }
+  }, [addMediaOnceReady, state.localMedia.video, state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     console.log("Local video source changed to ", state.localMedia.video);
     if (state.localMedia.video) {
@@ -285,13 +288,21 @@ export const MeetingProvider = ({
       setVirtualBackground(vbg.mode, vbg.imageUrl, vbg.videoUrl);
     }
     if (
-      !shoudAddMediaToMeeting && // avoid conflict with addMedia() at the meeting join
-      state.meetingStatus === MEETING_STATUSES.IN_MEETING &&
       state.localMedia.video
+      // meeting?.hasMediaConnectionConnectedAtLeastOnce
+      // state.meetingStatus === MEETING_STATUSES.IN_MEETING &&
     ) {
-      meeting.publishStreams({ camera: state.localMedia.video }).then(() => {
-        console.log("Meeting camera stream published");
-      });
+      if (meeting?.currentMediaStatus?.video) {
+        // replace existing video stream in the meeting
+        meeting.publishStreams({ camera: state.localMedia.video }).then(() => {
+          console.log("Meeting camera stream published");
+        });
+      } else {
+        if (state.meetingStatus === MEETING_STATUSES.IN_MEETING) {
+          console.log("Adding camera stream to the meeting");
+          // addAudioVideoToMeeting();
+        }
+      }
     }
   }, [state.localMedia.video]); //eslint-disable-line react-hooks/exhaustive-deps
 
@@ -301,46 +312,25 @@ export const MeetingProvider = ({
       setNoiseRemoval(mediaDevices.selected.audio_noise_removal);
     }
     if (
-      // !shoudAddMediaToMeeting && // avoid conflict with addMedia() at the meeting join
-      state.meetingStatus === MEETING_STATUSES.IN_MEETING &&
       state.localMedia.audio
+      // meeting?.hasMediaConnectionConnectedAtLeastOnce
+      // state.meetingStatus === MEETING_STATUSES.IN_MEETING &&
     ) {
-      meeting
-        .publishStreams({ microphone: state.localMedia.audio })
-        .then(() => {
-          console.log("Meeting microphone stream published");
-        });
+      if (meeting?.currentMediaStatus?.audio) {
+        // replace existing audio stream in the meeting
+        meeting
+          .publishStreams({ microphone: state.localMedia.audio })
+          .then(() => {
+            console.log("Meeting microphone stream published");
+          });
+      } else {
+        if (state.meetingStatus === MEETING_STATUSES.IN_MEETING) {
+          console.log("Adding microphone stream to the meeting");
+          // addAudioVideoToMeeting();
+        }
+      }
     }
   }, [state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (
-      shoudAddMediaToMeeting &&
-      state.localMedia.audio &&
-      state.localMedia.video
-    ) {
-      const mOptions = {
-        localStreams: {
-          microphone: state.localMedia.audio,
-          camera: state.localMedia.video,
-        },
-        allowMediaInLobby: false,
-      };
-      console.log(
-        "About to add media to the meeting: ",
-        JSON.stringify(mOptions)
-      );
-      // meeting
-      //   .addMedia(mOptions)
-      //   .then(() => {
-      //     console.log("Media added");
-      //     setShouldAddMediaToMeeting(false); // addMedia() should be run only at the meeting join, later media changes are handled using (un)publisStreams()
-      //   })
-      //   .catch((error) => {
-      //     console.error(`Error adding media: ${error}`);
-      //   });
-    }
-  }, [shoudAddMediaToMeeting, state.localMedia.audio, state.localMedia.video]); //eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     console.log("Creating Webex client...");
@@ -390,34 +380,7 @@ export const MeetingProvider = ({
         mediaDevices.selected.video_input,
         mediaDevices.selected.video_quality
       );
-      // const micStream =
-      //   await wxClient.meetings.mediaHelpers.createMicrophoneStream({
-      //     audio: true,
-      //     deviceId:
-      //       mediaDevices.selected &&
-      //       mediaDevices.selected.audio_input &&
-      //       mediaDevices.selected.audio_input.length > 0
-      //         ? { exact: mediaDevices.selected.audio_input }
-      //         : undefined,
-      //   });
-      // const camStream = await wxClient.meetings.mediaHelpers.createCameraStream(
-      //   {
-      //     video: true,
-      //     facingMode: "user",
-      //     width: { ideal: 1280 },
-      //     height: { ideal: 720 },
-      //     deviceId:
-      //       mediaDevices.selected &&
-      //       mediaDevices.selected.video_input &&
-      //       mediaDevices.selected.video_input.length > 0
-      //         ? { exact: mediaDevices.selected.video_input }
-      //         : undefined,
-      //   }
-      // );
-      // setLocalMedia({
-      //   audio: micStream,
-      //   video: camStream,
-      // });
+
       const joinOptions = {
         enableMultistream: false, // Multistream is an experimental feature
         moderator: false,
@@ -426,18 +389,6 @@ export const MeetingProvider = ({
         rejoin: true,
         locale: "cs_CZ", // audio disclaimer language
       };
-      // const mediaOptions = {
-      //   localStreams: {
-      //     microphone: mediaDevices.active.audio,
-      //     camera: mediaDevices.active.video,
-      //   },
-      //   allowMediaInLobby: false,
-      // };
-      // //eslint-disable-next-line no-unused-vars
-      // const meetingOptions = {
-      //   joinOptions: joinOptions,
-      //   mediaOptions: mediaOptions,
-      // };
 
       newMeeting.members.on("all", memberStatusHandler);
       newMeeting.on("all", meetingStatusHandler);
@@ -445,9 +396,6 @@ export const MeetingProvider = ({
         // await newMeeting.joinWithMedia(meetingOptions);
         console.log("Join meeting request complete");
       });
-      // setMeetingStatus(MEETING_STATUSES.JOINED);
-      // await newMeeting.addMedia(mediaOptions);
-      // console.log("Media added");
     } catch (error) {
       console.error(`Error registering meeting: ${error}`);
     }
@@ -509,12 +457,10 @@ export const MeetingProvider = ({
         switch (pload.currentState) {
           case "ACTIVE":
             setMeetingStatus(MEETING_STATUSES.ACTIVE);
-            // setShouldAddMediaToMeeting(true);
             break;
           case "INACTIVE":
             console.log("Meeting ended");
             setMeetingStatus(MEETING_STATUSES.INACTIVE);
-            setShouldAddMediaToMeeting(false);
             break;
           default:
             console.log("Meeting state changed to: " + pload.currentState);
@@ -523,7 +469,6 @@ export const MeetingProvider = ({
       case "meeting:self:lobbyWaiting":
         console.log("Meeting lobby waiting");
         setMeetingStatus(MEETING_STATUSES.IN_LOBBY);
-        setShouldAddMediaToMeeting(false);
         setOverlay({
           hidden: false,
           message: "Čekejte, prosím, na vstup do konference",
@@ -534,7 +479,6 @@ export const MeetingProvider = ({
         console.log("Meeting guest admitted");
         setMeetingStatus(MEETING_STATUSES.IN_MEETING);
         setOverlay({ hidden: true, message: "" });
-        setShouldAddMediaToMeeting(true);
         break;
 
       case "meeting:self:unmutedByOthers":
@@ -560,6 +504,9 @@ export const MeetingProvider = ({
             pload.isPublished ? "" : "un"
           }published`
         );
+        break;
+      case "DESTROY_MEETING":
+        unregisterMeetings();
         break;
       default:
         console.log(`Unknown meeting event: ${event}`);
@@ -599,7 +546,8 @@ export const MeetingProvider = ({
                   // in lobby
                 } else {
                   // not in meeting
-                  leaveMeeting();
+                  // leaveMeeting();
+                  // unregisterMeetings();
                 }
               }
             }
@@ -611,7 +559,6 @@ export const MeetingProvider = ({
             if (added.length > 0) {
               console.log("Self added to the meeting");
               setMeetingStatus(MEETING_STATUSES.IN_MEETING);
-              setShouldAddMediaToMeeting(true);
             }
           }
         }
@@ -621,38 +568,33 @@ export const MeetingProvider = ({
     }
   };
 
-  const leaveMeeting = () => {
-    function unregisterMeeting() {
-      setAlertLeaveMeeting(false);
-      setMeetingStatus(MEETING_STATUSES.INACTIVE);
-      if (webexClient && webexClient.meetings.registered) {
-        setTimeout(() => {
-          webexClient.meetings.unregister().then(() => {
-            console.log("Meetings unregistered");
-            setMeeting(null);
-          }, 3000);
-        });
-      } else {
-        console.log("Meetings not registered");
-        setMeeting(null);
-      }
+  const unregisterMeetings = () => {
+    setAlertLeaveMeeting(false);
+    setMeetingStatus(MEETING_STATUSES.INACTIVE);
+    if (webexClient && webexClient.meetings.registered) {
+      setTimeout(() => {
+        console.log("Unregistering meetings...");
+        webexClient.meetings.unregister().then(() => {
+          console.log("Meetings unregistered");
+          // setMeeting(null);
+        }, 3000);
+      });
+    } else {
+      console.log("Meetings not registered");
+      setMeeting(null);
     }
+  };
 
+  const leaveMeeting = async () => {
     if (!meeting) {
-      console.error("Meeting not found");
-      unregisterMeeting();
+      console.error("Meeting not found when trying to leave");
       return;
     }
     try {
-      meeting
-        .leave()
-        .then(() => {
-          console.log("Meeting left");
-          unregisterMeeting();
-        })
-        .catch((error) => {
-          console.error(`Error leaving meeting: ${error}`);
-        });
+      console.log("Leaving the meeting...");
+      await meeting.leave();
+      console.log("Meeting left");
+      // unregisterMeetings();
     } catch (error) {
       console.error(`Error leaving meeting: ${error}`);
     }
@@ -753,8 +695,8 @@ export const MeetingProvider = ({
 
   const stopMicrophoneStream = () => {
     try {
-      console.log("Stopping microphone stream...");
       if (state.localMedia.audio) {
+        console.log("Stopping microphone stream...");
         state.localMedia.audio.stop();
         console.log(`Microphone stream ${state.localMedia.audio} stopped`);
         setLocalMedia({ audio: null });
@@ -764,8 +706,9 @@ export const MeetingProvider = ({
     }
   };
 
-  const startMicrophoneStream = (deviceId = null) => {
+  const startMicrophoneStream = async (deviceId = null) => {
     stopMicrophoneStream();
+    let stream;
     const otherConstraints = {
       // sampleRate: { ideal: 24000 },
     };
@@ -773,41 +716,39 @@ export const MeetingProvider = ({
       deviceId: deviceId ? { exact: deviceId } : undefined,
       ...otherConstraints,
     };
-    createMicrophoneStream(constraints)
-      .then((stream) => {
-        console.log("Starting microphone stream - ", stream);
-        setLocalMedia({ audio: stream });
-      })
-      .catch((err) => {
-        if (
-          err.type === "CREATE_STREAM_FAILED" &&
-          err.message.includes("OverconstrainedError")
-        ) {
-          console.log("Retrying without deviceId");
-          setAudioDeviceInput("");
-          createMicrophoneStream(otherConstraints)
-            .then((stream) => {
-              console.log("Starting microphone stream - ", stream);
-              setLocalMedia({ audio: stream });
-            })
-            .catch((err) => {
-              console.log("Error starting microphone stream - ", err);
-              setLocalMedia({ audio: null });
-            });
-        } else {
+    try {
+      stream = await createMicrophoneStream(constraints);
+      console.log("Started microphone stream - ", stream);
+      setLocalMedia({ audio: stream });
+    } catch (err) {
+      if (
+        err.type === "CREATE_STREAM_FAILED" &&
+        err.message.includes("OverconstrainedError")
+      ) {
+        console.log("Retrying to create microphone stream without deviceId");
+        setAudioDeviceInput("");
+        try {
+          stream = await createMicrophoneStream(otherConstraints);
+          console.log("Started microphone stream - ", stream);
+          setLocalMedia({ audio: stream });
+        } catch (err) {
           console.log("Error starting microphone stream - ", err);
           setLocalMedia({ audio: null });
         }
-      });
+      } else {
+        console.log("Error starting microphone stream - ", err);
+        setLocalMedia({ audio: null });
+      }
+    }
   };
 
   const stopCameraStream = () => {
     try {
-      console.log("Stopping camera stream...");
       if (state.localMedia.video) {
+        console.log("Stopping camera stream...");
         state.localMedia.video.stop();
         console.log(`Camera stream ${state.localMedia.video} stopped`);
-        if (meeting) {
+        if (meeting?.currentMediaStatus.video) {
           meeting
             .unpublishStreams([state.localMedia.video])
             .then(() => {
@@ -824,42 +765,40 @@ export const MeetingProvider = ({
     }
   };
 
-  const startCameraStream = (deviceId = null, quality = "720p") => {
-    //eslint-disable-next-line no-unused-vars
+  const startCameraStream = async (deviceId = null, quality = "720p") => {
     stopCameraStream();
+    let stream;
     const baseVideoConstraints =
       state.localMedia.videoConstraints[localVideoQuality[quality]];
     const constraints = {
       ...baseVideoConstraints, // "720p
       deviceId: deviceId ? { exact: deviceId } : undefined,
     };
-    console.log("Creating camera stream with constraints - ", constraints);
-    createCameraStream(constraints)
-      .then((stream) => {
-        console.log("Created camera stream - ", stream);
-        setLocalMedia({ video: stream });
-      })
-      .catch((err) => {
-        if (
-          err.type === "CREATE_STREAM_FAILED" &&
-          err.message.includes("OverconstrainedError")
-        ) {
-          console.log("Retrying without deviceId");
-          setVideoDeviceInput("");
-          createCameraStream(baseVideoConstraints)
-            .then((stream) => {
-              console.log("Created camera stream - ", stream);
-              setLocalMedia({ video: stream });
-            })
-            .catch((err) => {
-              console.error("Error creating camera stream - ", err);
-              setLocalMedia({ video: null });
-            });
-        } else {
+    try {
+      console.log("Creating camera stream with constraints - ", constraints);
+      stream = await createCameraStream(constraints);
+      console.log("Created camera stream - ", stream);
+      setLocalMedia({ video: stream });
+    } catch (err) {
+      if (
+        err.type === "CREATE_STREAM_FAILED" &&
+        err.message.includes("OverconstrainedError")
+      ) {
+        console.log("Retrying to create camera stream without deviceId");
+        setVideoDeviceInput("");
+        try {
+          stream = await createCameraStream(baseVideoConstraints);
+          console.log("Created camera stream - ", stream);
+          setLocalMedia({ video: stream });
+        } catch (err) {
           console.error("Error creating camera stream - ", err);
           setLocalMedia({ video: null });
         }
-      });
+      } else {
+        console.error("Error creating camera stream - ", err);
+        setLocalMedia({ video: null });
+      }
+    }
   };
 
   const setNoiseRemoval = async (enable) => {
@@ -915,17 +854,14 @@ export const MeetingProvider = ({
         }
         return;
       } else {
-        // if (!effect?.isEnabled) {
         console.log("Applying virtual background to local camera stream");
 
-        // if (!effect) {
         effect = await webexClient.meetings.createVirtualBackgroundEffect({
           mode: mode,
           bgImageUrl: imageUrl,
           bgVideoUrl: videoUrl,
         });
         await state.localMedia.video.addEffect(effect);
-        // }
 
         await effect.enable();
         console.log(
@@ -934,7 +870,6 @@ export const MeetingProvider = ({
         setVirtualBackgroundMode(mode);
         setVirtualBackgroundImage(imageUrl);
         setVirtualBackgroundVideo(videoUrl);
-        // }
       }
     } catch (error) {
       console.log("Error applying background effect!", error);

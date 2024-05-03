@@ -35,10 +35,10 @@ const MeetingView = (mediaDevices) => {
     dispatch({ type: actionTypes.SET_ALERT_LEAVE_MEETING, alertLeaveMeeting });
   };
 
-  console.log("Meeting status: " + contextState.meetingStatus);
-  console.log(
-    `Media streams. Microphone: ${contextState.localMedia.audio}, Camera: ${contextState.localMedia.video}, Remote audio: ${contextState.remoteMedia.audio}, Remote video: ${contextState.remoteMedia.video}`
-  );
+  // console.log("Meeting status: " + contextState.meetingStatus);
+  // console.log(
+  //   `Media streams. Microphone: ${contextState.localMedia.audio}, Camera: ${contextState.localMedia.video}, Remote audio: ${contextState.remoteMedia.audio}, Remote video: ${contextState.remoteMedia.video}`
+  // );
 
   useEffect(() => {
     try {
