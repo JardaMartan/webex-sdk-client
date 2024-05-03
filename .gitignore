@@ -54,3 +54,5 @@ webpack.config.prod.js
 # webex config
 src/api/webexConfig.json
 src/api/webexConfig.localhost.json
+
+src/tmp

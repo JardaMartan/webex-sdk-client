@@ -32,6 +32,7 @@ import {
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 // import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import { useMeeting } from "../meetingcontext/MeetingContext";
+import OpenSettings from "../settings/OpenSettings";
 
 // eslint-disable-next-line no-unused-vars
 const AppHeader = ({ logoutUser, user, ...props }) => {
@@ -104,6 +105,7 @@ const AppHeader = ({ logoutUser, user, ...props }) => {
         alignItems: "center",
       }}
     >
+      <OpenSettings />
       <Dropdown>
         <MenuButton
           variant="plain"

@@ -1,4 +1,6 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import Button from "@mui/joy/Button";
 import Box from "@mui/joy/Box";
 import ButtonGroup from "@mui/joy/ButtonGroup";
@@ -21,7 +23,7 @@ import { MEETING_STATUSES } from "../../constants/meeting";
 import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 import DtmfPanel from "./DtmfPanel";
 
-const MeetingView = () => {
+const MeetingView = (mediaDevices) => {
   const remoteVideoRef = useRef("remoteVideo");
   const localVideoRef = useRef("localVideo");
   const remoteAudioRef = useRef("remoteAudio");
@@ -38,61 +40,84 @@ const MeetingView = () => {
     `Media streams. Microphone: ${contextState.localMedia.audio}, Camera: ${contextState.localMedia.video}, Remote audio: ${contextState.remoteMedia.audio}, Remote video: ${contextState.remoteMedia.video}`
   );
 
-  try {
-    if (
-      [MEETING_STATUSES.ACTIVE, MEETING_STATUSES.IN_LOBBY].includes(
-        contextState.meetingStatus
-      ) &&
-      contextState.localMedia.video
-    ) {
-      if (localVideoRef.current.srcObject == null) {
-        console.log("Setting local video for selfview");
-        localVideoRef.current.srcObject =
-          contextState.localMedia.video.outputStream;
+  useEffect(() => {
+    try {
+      if (
+        [
+          MEETING_STATUSES.ACTIVE,
+          MEETING_STATUSES.IN_LOBBY,
+          MEETING_STATUSES.JOINED,
+          MEETING_STATUSES.IN_MEETING,
+        ].includes(contextState.meetingStatus) &&
+        contextState.localMedia.video
+      ) {
+        if (localVideoRef.current.srcObject == null) {
+          console.log("Setting local video for selfview");
+          localVideoRef.current.srcObject =
+            contextState.localMedia.video.outputStream;
+        }
+      } else if (localVideoRef.current.srcObject != null) {
+        console.log("Unsetting local video for selfview");
+        localVideoRef.current.srcObject = null;
       }
-    } else if (localVideoRef.current.srcObject != null) {
-      console.log("Unsetting local video for selfview");
-      localVideoRef.current.srcObject = null;
+    } catch (error) {
+      console.log(`Error setting local video: ${error}`);
     }
-  } catch (error) {
-    console.log(`Error setting local video: ${error}`);
-  }
+  }, [contextState.localMedia.video, contextState.meetingStatus]);
 
-  try {
-    if (
-      MEETING_STATUSES.ACTIVE === contextState.meetingStatus &&
-      contextState.remoteMedia.audio
-    ) {
-      if (remoteAudioRef.current.srcObject == null) {
-        console.log("Setting remote audio");
-        remoteAudioRef.current.srcObject =
-          contextState.remoteMedia.audio.stream;
+  useEffect(() => {
+    try {
+      if (
+        MEETING_STATUSES.IN_MEETING === contextState.meetingStatus &&
+        contextState.remoteMedia.audio
+      ) {
+        if (remoteAudioRef.current.srcObject == null) {
+          console.log("Setting remote audio");
+          remoteAudioRef.current.srcObject =
+            contextState.remoteMedia.audio.stream;
+        }
+      } else if (remoteAudioRef.current.srcObject != null) {
+        console.log("Unsetting remote audio");
+        remoteAudioRef.current.srcObject = null;
       }
-    } else if (remoteAudioRef.current.srcObject != null) {
-      console.log("Unsetting remote audio");
-      remoteAudioRef.current.srcObject = null;
+    } catch (error) {
+      console.log(`Error setting remote audio: ${error}`);
     }
-  } catch (error) {
-    console.log(`Error setting remote audio: ${error}`);
-  }
+  }, [contextState.remoteMedia.audio, contextState.meetingStatus]);
 
-  try {
-    if (
-      MEETING_STATUSES.ACTIVE === contextState.meetingStatus &&
-      contextState.remoteMedia.video
-    ) {
-      if (remoteVideoRef.current.srcObject == null) {
-        console.log("Setting remote video");
-        remoteVideoRef.current.srcObject =
-          contextState.remoteMedia.video.stream;
+  useEffect(() => {
+    try {
+      if (
+        MEETING_STATUSES.IN_MEETING === contextState.meetingStatus &&
+        contextState.remoteMedia.video
+      ) {
+        if (remoteVideoRef.current.srcObject == null) {
+          console.log("Setting remote video");
+          remoteVideoRef.current.srcObject =
+            contextState.remoteMedia.video.stream;
+        }
+      } else if (remoteVideoRef.current.srcObject != null) {
+        console.log("Unsetting remote video");
+        remoteVideoRef.current.srcObject = null;
       }
-    } else if (remoteVideoRef.current.srcObject != null) {
-      console.log("Unsetting remote video");
-      remoteVideoRef.current.srcObject = null;
+    } catch (error) {
+      console.log(`Error setting remote video: ${error}`);
     }
-  } catch (error) {
-    console.log(`Error setting remote video: ${error}`);
-  }
+  }, [contextState.remoteMedia.video, contextState.meetingStatus]);
+
+  useEffect(() => {
+    if (mediaDevices.selected?.audio_output.length > 0) {
+      console.log(
+        "Selected audio output: ",
+        mediaDevices.selected.audio_output
+      );
+      remoteAudioRef.current.featurePolicy.allowsFeature(
+        "speaker-selection",
+        "*"
+      );
+      remoteAudioRef.current.setSinkId(mediaDevices.selected.audio_output);
+    }
+  }, [mediaDevices.selected]); //eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Box
@@ -235,7 +260,7 @@ const MeetingView = () => {
           </Container>
         </Paper>
       </Box>
-      <Box hidden={true}>
+      <Box visibility="hidden">
         Remote Audio
         <audio id="remote-audio" controls autoPlay ref={remoteAudioRef} />
       </Box>
@@ -249,4 +274,14 @@ const MeetingView = () => {
   );
 };
 
-export default MeetingView;
+MeetingView.propTypes = {
+  mediaDevices: PropTypes.object,
+};
+
+const mapStateToProps = (state) => {
+  return {
+    mediaDevices: state.mediaDevices,
+  };
+};
+
+export default connect(mapStateToProps)(MeetingView);

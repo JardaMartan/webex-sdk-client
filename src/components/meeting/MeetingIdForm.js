@@ -24,6 +24,8 @@ const MeetingIdForm = () => {
         break;
       case MEETING_STATUSES.ACTIVE:
       case MEETING_STATUSES.IN_LOBBY:
+      case MEETING_STATUSES.JOINED:
+      case MEETING_STATUSES.IN_MEETING:
         dispatch({
           type: actionTypes.SET_ALERT_LEAVE_MEETING,
           alertLeaveMeeting: true,
@@ -33,6 +35,10 @@ const MeetingIdForm = () => {
         leaveMeeting();
         break;
       default:
+        console.log(
+          "Unhandled click action for meeting status ",
+          contextState.meetingStatus
+        );
         break;
     }
   };
@@ -48,6 +54,7 @@ const MeetingIdForm = () => {
         break;
       case MEETING_STATUSES.ACTIVE:
       case MEETING_STATUSES.IN_LOBBY:
+      case MEETING_STATUSES.IN_MEETING:
         setButtonText("Opustit");
         break;
       case MEETING_STATUSES.JOINING:

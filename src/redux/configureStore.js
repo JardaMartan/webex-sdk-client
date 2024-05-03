@@ -12,7 +12,7 @@ const persistConfig = {
   key: "root",
   storage,
   // blacklist: ["device.info", "workspaces"],
-  blacklist: ["log", "app", "sdk", "status"],
+  blacklist: ["log", "mediaDevices.access", "mediaDevices.available"],
   // whitelist: ["webex", "user"],
 };
 

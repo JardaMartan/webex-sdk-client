@@ -28,7 +28,7 @@ const MeetingControls = () => {
   return (
     <Box
       visibility={
-        contextState.meetingStatus !== MEETING_STATUSES.ACTIVE
+        contextState.meetingStatus !== MEETING_STATUSES.IN_MEETING
           ? "hidden"
           : "visible"
       }
