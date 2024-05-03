@@ -32,20 +32,6 @@ const AudioSettings = ({
   const selectWidth = "300px";
   const selectHeight = "300px";
 
-  /*  useEffect(() => {
-    console.log("Selected audio source: ", mediaDevices.selected.audio_input);
-    if (mediaDevices.selected.audio_input) {
-      contextState.localMedia.available.audio_input.forEach((device) => {
-        if (device.deviceId === mediaDevices.selected.audio_input) {
-          console.log("Selected audio source: ", device.label);
-        }
-      });
-    }
-  }, [
-    mediaDevices.selected.audio_input,
-    contextState.localMedia.available.audio_input,
-  ]);*/
-
   useEffect(() => {
     setNoiseRemovalChanging(false);
   }, [mediaDevices.selected.audio_noise_removal]);
@@ -73,33 +59,6 @@ const AudioSettings = ({
       }
     }
   }, [visible]); //eslint-disable-line react-hooks/exhaustive-deps
-
-  // useEffect(() => {
-  //   try {
-  //     if (contextState.remoteMedia.audio) {
-  //       if (remoteAudioRef.current.srcObject == null) {
-  //         console.log("Setting remote audio");
-  //         remoteAudioRef.current.srcObject =
-  //           contextState.remoteMedia.audio.stream;
-  //       }
-  //     } else if (remoteAudioRef.current.srcObject != null) {
-  //       console.log("Unsetting remote audio");
-  //       remoteAudioRef.current.srcObject = null;
-  //     }
-  //   } catch (error) {
-  //     console.log(`Error setting remote audio: ${error}`);
-  //   }
-  // }, [contextState.remoteMedia.audio]);
-
-  useEffect(() => {
-    if (visible && mediaDevices.selected?.audio_output) {
-      console.log(
-        "Selected audio output: ",
-        mediaDevices.selected.audio_output
-      );
-      remoteAudioRef.current.setSinkId(mediaDevices.selected.audio_output);
-    }
-  }, [mediaDevices.selected]); //eslint-disable-line react-hooks/exhaustive-deps
 
   if (!visible) {
     return null;

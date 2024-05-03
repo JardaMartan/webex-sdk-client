@@ -23,7 +23,7 @@ import { MEETING_STATUSES } from "../../constants/meeting";
 import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 import DtmfPanel from "./DtmfPanel";
 
-const MeetingView = (mediaDevices) => {
+const MeetingView = ({ mediaDevices }) => {
   const remoteVideoRef = useRef("remoteVideo");
   const localVideoRef = useRef("localVideo");
   const remoteAudioRef = useRef("remoteAudio");
@@ -106,14 +106,10 @@ const MeetingView = (mediaDevices) => {
   }, [contextState.remoteMedia.video, contextState.meetingStatus]);
 
   useEffect(() => {
-    if (mediaDevices.selected?.audio_output.length > 0) {
+    if (mediaDevices.selected?.audio_output.length > 0 && remoteAudioRef) {
       console.log(
         "Selected audio output: ",
         mediaDevices.selected.audio_output
-      );
-      remoteAudioRef.current.featurePolicy.allowsFeature(
-        "speaker-selection",
-        "*"
       );
       remoteAudioRef.current.setSinkId(mediaDevices.selected.audio_output);
     }
