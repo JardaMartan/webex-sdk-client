@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import Button from "@mui/joy/Button";
@@ -11,7 +11,7 @@ import ModalClose from "@mui/joy/ModalClose";
 import Paper from "@mui/material/Paper";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
-import { DialogActions, DialogContent, DialogTitle } from "@mui/joy";
+import { DialogActions, DialogContent, DialogTitle, Input } from "@mui/joy";
 // import MeetingControls from "./MeetingControls";
 // import MeetingIdForm from "./MeetingIdForm";
 import {
@@ -28,11 +28,27 @@ const MeetingView = ({ mediaDevices }) => {
   const localVideoRef = useRef("localVideo");
   const remoteAudioRef = useRef("remoteAudio");
   const contextState = useMeeting();
-  const { leaveMeeting } = useMeetingAction();
+  const { leaveMeeting, setMeetingJoin } = useMeetingAction();
   const dispatch = useMeetingDispatch();
+  const [meetingPassword, setMeetingPassword] = useState("");
+  const [meetingCaptcha, setMeetingCaptcha] = useState("");
 
   const setAlertLeaveMeeting = (alertLeaveMeeting) => {
     dispatch({ type: actionTypes.SET_ALERT_LEAVE_MEETING, alertLeaveMeeting });
+  };
+
+  const setAlertEnterPassword = (alertEnterPassword) => {
+    dispatch({
+      type: actionTypes.SET_ALERT_ENTER_PASSWORD,
+      alertEnterPassword,
+    });
+  };
+
+  const setAlertEnterCaptcha = (alertEnterCaptcha) => {
+    dispatch({
+      type: actionTypes.SET_ALERT_ENTER_CAPTCHA,
+      alertEnterCaptcha,
+    });
   };
 
   // console.log("Meeting status: " + contextState.meetingStatus);
@@ -130,12 +146,7 @@ const MeetingView = ({ mediaDevices }) => {
     >
       <Modal
         open={contextState.alertLeaveMeeting}
-        onClose={() =>
-          dispatch({
-            type: actionTypes.SET_ALERT_LEAVE_MEETING,
-            alertLeaveMeeting: true,
-          })
-        }
+        onClose={() => setAlertLeaveMeeting(true)}
       >
         <ModalDialog>
           <ModalClose onClick={() => setAlertLeaveMeeting(false)} />
@@ -166,6 +177,83 @@ const MeetingView = ({ mediaDevices }) => {
           <Box pt={3}>
             <DtmfPanel />
           </Box>
+        </ModalDialog>
+      </Modal>
+      <Modal
+        open={contextState.alertEnterPassword}
+        onClose={() => setAlertEnterPassword(false)}
+      >
+        <ModalDialog>
+          <ModalClose onClick={() => setAlertEnterPassword(false)} />
+          <DialogTitle>Heslo konference</DialogTitle>
+          <Divider inset="none" />
+          <DialogContent>
+            Zadejte heslo konference
+            <Input
+              value={meetingPassword}
+              onChange={(e) => setMeetingPassword(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions
+            buttonFlex="none"
+            sx={{ pt: 1.5, justifyContent: "flex-start" }}
+          >
+            <ButtonGroup variant="outlined" color="primary" spacing="0.5rem">
+              <Button onClick={() => setAlertEnterPassword(false)}>
+                Zrušit
+              </Button>
+              <Button
+                onClick={() => {
+                  setMeetingJoin({ password: meetingPassword });
+                  setMeetingPassword("");
+                  setAlertEnterPassword(false);
+                }}
+              >
+                OK
+              </Button>
+            </ButtonGroup>
+          </DialogActions>
+        </ModalDialog>
+      </Modal>
+      <Modal
+        open={contextState.alertEnterCaptcha}
+        onClose={() => setAlertEnterCaptcha(false)}
+      >
+        <ModalDialog>
+          <ModalClose onClick={() => setAlertEnterCaptcha(false)} />
+          <DialogTitle>Kód z obrázku</DialogTitle>
+          <Divider inset="none" />
+          <DialogContent>
+            Zadejte kód z obrázku
+            <img
+              src={contextState.meetingCaptcha.verificationImageURL}
+              alt="Captcha"
+              style={{ display: "block" }}
+            />
+            <Input
+              value={meetingCaptcha}
+              onChange={(e) => setMeetingCaptcha(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions
+            buttonFlex="none"
+            sx={{ pt: 1.5, justifyContent: "flex-start" }}
+          >
+            <ButtonGroup variant="outlined" color="primary" spacing="0.5rem">
+              <Button onClick={() => setAlertEnterCaptcha(false)}>
+                Zrušit
+              </Button>
+              <Button
+                onClick={() => {
+                  setMeetingJoin({ captcha: meetingCaptcha });
+                  setMeetingCaptcha("");
+                  setAlertEnterCaptcha(false);
+                }}
+              >
+                OK
+              </Button>
+            </ButtonGroup>
+          </DialogActions>
         </ModalDialog>
       </Modal>
       {/* <MeetingIdForm /> */}

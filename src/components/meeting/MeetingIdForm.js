@@ -11,16 +11,17 @@ import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 const MeetingIdForm = () => {
   const contextState = useMeeting();
   const dispatch = useMeetingDispatch();
-  const { joinMeeting, leaveMeeting } = useMeetingAction();
+  const { leaveMeeting, setMeetingJoin } = useMeetingAction();
   const [meetingNumber, setMeetingNumber] = useState("");
   const [buttonText, setButtonText] = useState("Připojit");
 
   const meetingAction = (meetingNumber) => {
     switch (contextState.meetingStatus) {
       case MEETING_STATUSES.INACTIVE:
-        joinMeeting(meetingNumber).then(() => {
-          console.log("Meeting joined");
-        });
+        // joinMeeting(meetingNumber).then((result) => {
+        //   console.log("Meeting joined: ", result);
+        // });
+        setMeetingJoin({ number: meetingNumber });
         break;
       case MEETING_STATUSES.ACTIVE:
       case MEETING_STATUSES.IN_LOBBY:

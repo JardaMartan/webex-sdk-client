@@ -1,6 +1,5 @@
 import React, {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useReducer,
@@ -103,6 +102,17 @@ export const MeetingProvider = ({
         return { ...state, overlay: { ...state.overlay, ...action.overlay } };
       case actionTypes.SET_ALERT_LEAVE_MEETING:
         return { ...state, alertLeaveMeeting: action.alertLeaveMeeting };
+      case actionTypes.SET_ALERT_ENTER_PASSWORD:
+        return { ...state, alertEnterPassword: action.alertEnterPassword };
+      case actionTypes.SET_ALERT_ENTER_CAPTCHA:
+        return { ...state, alertEnterCaptcha: action.alertEnterCaptcha };
+      case actionTypes.SET_MEETING_CAPTCHA:
+        return { ...state, meetingCaptcha: action.meetingCaptcha };
+      case actionTypes.SET_MEETING_JOIN:
+        return {
+          ...state,
+          meetingJoin: { ...state.meetingJoin, ...action.meetingJoin },
+        };
       case actionTypes.SET_CONTROL_PANEL:
         return { ...state, controlPanel: action.controlPanel };
       case actionTypes.SET_DTMF_PANEL:
@@ -148,6 +158,25 @@ export const MeetingProvider = ({
     dispatch({ type: actionTypes.SET_ALERT_LEAVE_MEETING, alertLeaveMeeting });
   };
 
+  const setAlertEnterPassword = (alertEnterPassword) => {
+    dispatch({
+      type: actionTypes.SET_ALERT_ENTER_PASSWORD,
+      alertEnterPassword,
+    });
+  };
+
+  const setAlertEnterCaptcha = (alertEnterCaptcha) => {
+    dispatch({ type: actionTypes.SET_ALERT_ENTER_CAPTCHA, alertEnterCaptcha });
+  };
+
+  const setMeetingCaptcha = (meetingCaptcha) => {
+    dispatch({ type: actionTypes.SET_MEETING_CAPTCHA, meetingCaptcha });
+  };
+
+  const setMeetingJoin = (meetingJoin) => {
+    dispatch({ type: actionTypes.SET_MEETING_JOIN, meetingJoin });
+  };
+
   const setMeetingStatus = (status) => {
     dispatch({ type: actionTypes.SET_MEETING_STATUS, status });
   };
@@ -163,6 +192,132 @@ export const MeetingProvider = ({
   const setControlPanel = (controlPanel) => {
     dispatch({ type: actionTypes.SET_CONTROL_PANEL, controlPanel });
   };
+
+  // create meeting
+  useEffect(() => {
+    if (state.meetingJoin.number && state.meetingJoin.number !== "") {
+      if (!webexClient) {
+        console.error("Webex client not initialized");
+        return;
+      }
+
+      webexClient.meetings
+        .register()
+        .then(() => {
+          console.log("Meetings registered");
+          // const meetingNum = meetingNumber.replaceAll(" ", "") + "@webex.com";
+          const meetingNum = state.meetingJoin.number.replaceAll(" ", "");
+          console.log(`Creating meeting client for: ${meetingNum}`);
+          webexClient.meetings
+            .create(meetingNum)
+            .then((newMeeting) => {
+              // should automatically recognize link or SIP URI MEETING_LINK
+
+              try {
+                const url = new URL(state.meetingJoin.number); //eslint-disable-line no-unused-vars
+                console.log(
+                  "Meeting number is a URL, we will not check for valid passwrord or captcha"
+                );
+                setMeetingJoin({ verified: true });
+              } catch (_) {
+                setMeetingJoin({ verified: false });
+              }
+
+              // register meeting event handlers
+              newMeeting.on("all", meetingStatusHandler);
+              newMeeting.members.on("all", memberStatusHandler);
+
+              console.log("Meeting client created: ", newMeeting);
+              setMeeting(newMeeting);
+            })
+            .catch((error) => {
+              console.error(`Error creating the meeting: ${error}`);
+            });
+        })
+        .catch((error) => {
+          console.error(`Error registering meetings: ${error}`);
+          return;
+        });
+
+      // start media streams - takes a while, but both are async
+      startMicrophoneStream(mediaDevices.selected.audio_input);
+      startCameraStream(
+        mediaDevices.selected.video_input,
+        mediaDevices.selected.video_quality
+      );
+    }
+  }, [state.meetingJoin.number]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  // verify password or captcha
+  useEffect(() => {
+    if (meeting && !state.meetingJoin.verified) {
+      console.log(
+        `Verifying password: ${state.meetingJoin.password} and captcha: ${state.meetingJoin.captcha}`
+      );
+      try {
+        meeting
+          .verifyPassword(state.meetingJoin.password, state.meetingJoin.captcha)
+          .then(({ isPasswordValid, requiredCaptcha, failureReason }) => {
+            console.log(
+              "Password verification result: ",
+              isPasswordValid,
+              requiredCaptcha,
+              failureReason
+            );
+            if (failureReason === "WRONG_CAPTCHA") {
+              setMeetingCaptcha(requiredCaptcha);
+              setAlertEnterCaptcha(true);
+              return;
+            } else if (failureReason === "WRONG_PASSWORD") {
+              setAlertEnterPassword(true);
+              return;
+            }
+            setMeetingJoin({ verified: isPasswordValid });
+          })
+          .catch((error) => {
+            console.error(`Error verifying password: ${error}`);
+          });
+      } catch (error) {
+        console.error(`Error verifying password: ${error}`);
+      }
+    }
+  }, [meeting, state.meetingJoin.password, state.meetingJoin.captcha]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (
+      meeting &&
+      state.meetingJoin.number &&
+      state.meetingJoin.number !== "" &&
+      state.meetingJoin.verified
+    ) {
+      console.log(`Joining meeting: ${state.meetingJoin.number}`);
+      setMeetingStatus(MEETING_STATUSES.JOINING);
+
+      const joinOptions = {
+        enableMultistream: false, // Multistream is an experimental feature
+        moderator: false,
+        breakoutsSupported: false, // Enable breakout rooms in the meeting
+        receiveTranscription: false,
+        rejoin: true,
+        locale: "cs_CZ", // audio disclaimer language
+      };
+      // newMeeting.joinWithMedia(meetingOptions);
+      meeting
+        .join(joinOptions)
+        .then(() => {
+          console.log("Join meeting request complete");
+        })
+        .catch((error) => {
+          /*          if (error.name === "PasswordError") {
+            setAlertEnterPassword(true);
+          } else if (error.name === "CaptchaError") {
+            setMeetingCaptcha(meeting.requiredCaptcha);
+            setAlertEnterCaptcha(true);
+          }*/
+          console.error(`Error joining the meeting: ${JSON.stringify(error)}`);
+        });
+    }
+  }, [state.meetingJoin, meeting]); //eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     console.log(
@@ -219,12 +374,11 @@ export const MeetingProvider = ({
     }
   }, [state.meetingStatus]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  const createWebexClient = useCallback(() => {
-    if (webexClient) {
-      console.log("Webex client already exists");
-      return webexClient;
-    }
-
+  useEffect(() => {
+    console.log(
+      "(Re)creating Webex cliebt due to access token change: ",
+      webexConfig.accessToken
+    );
     try {
       const newWebexClient = initWebex({
         credentials: {
@@ -232,11 +386,11 @@ export const MeetingProvider = ({
         },
       });
       console.log("Webex client created");
-      return newWebexClient;
+      setWebexClient(newWebexClient);
     } catch (error) {
       console.error(`Error creating webex client: ${error}`);
     }
-  }, [webexConfig.accessToken, webexClient]);
+  }, [webexConfig.accessToken]); //eslint-disable-line react-hooks/exhaustive-deps
 
   async function addAudioVideoToMeeting() {
     console.log("Existing meeting media: ", meeting?.currentMediaStatus);
@@ -332,77 +486,10 @@ export const MeetingProvider = ({
     }
   }, [state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    console.log("Creating Webex client...");
-    setWebexClient(createWebexClient());
-  }, [createWebexClient]);
-
-  const registerMeeting = async (webexClient) => {
-    if (!webexClient) {
-      console.error("Webex client not found");
-      return false;
-    }
-    if (webexClient.meetings.registered) {
-      console.log("Meetings already registered");
-      return true;
-    }
-    try {
-      await webexClient.meetings.register();
-      console.log("Meeting registered");
-    } catch (error) {
-      console.error(`Error registering meeting: ${error}`);
-      return false;
-    }
-    return true;
-  };
-
-  const joinMeeting = async (meetingNumber) => {
-    const wxClient = createWebexClient();
-    if (!wxClient) {
-      return;
-    }
-    setWebexClient(wxClient);
-    setMeetingStatus(MEETING_STATUSES.JOINING);
-    if (!(await registerMeeting(wxClient))) {
-      setMeetingStatus(MEETING_STATUSES.INACTIVE);
-      return;
-    }
-
-    try {
-      // const meetingNum = meetingNumber.replaceAll(" ", "") + "@webex.com";
-      const meetingNum = meetingNumber.replaceAll(" ", "");
-      console.log(`joining meeting: ${meetingNum}`);
-      // const newMeeting = await wxClient.meetings.create(meetingNum, "SIP_URI"); // MEETING_LINK
-      const newMeeting = await wxClient.meetings.create(meetingNum); // MEETING_LINK
-      setMeeting(newMeeting);
-      startMicrophoneStream(mediaDevices.selected.audio_input);
-      startCameraStream(
-        mediaDevices.selected.video_input,
-        mediaDevices.selected.video_quality
-      );
-
-      const joinOptions = {
-        enableMultistream: false, // Multistream is an experimental feature
-        moderator: false,
-        breakoutsSupported: false, // Enable breakout rooms in the meeting
-        receiveTranscription: false,
-        rejoin: true,
-        locale: "cs_CZ", // audio disclaimer language
-      };
-
-      newMeeting.members.on("all", memberStatusHandler);
-      newMeeting.on("all", meetingStatusHandler);
-      newMeeting.join(joinOptions).then(() => {
-        // await newMeeting.joinWithMedia(meetingOptions);
-        console.log("Join meeting request complete");
-      });
-    } catch (error) {
-      console.error(`Error registering meeting: ${error}`);
-    }
-  };
-
   // meeting state update
   const meetingStatusHandler = (event, payload) => {
+    // the payload format is inconsistent, sometimes it is payload.payload, sometimes just payload
+    // also the payload is not always an object
     const pload = payload ? payload.payload || payload : {};
     try {
       const ploadStr = JSON.stringify(pload);
@@ -516,6 +603,8 @@ export const MeetingProvider = ({
 
   // meeting members update
   const memberStatusHandler = (event, payload) => {
+    // the payload format is inconsistent, sometimes it is payload.payload, sometimes just payload
+    // also the payload is not always an object
     const pload = payload ? payload.payload || payload : {};
     try {
       const ploadStr = JSON.stringify(pload);
@@ -576,7 +665,13 @@ export const MeetingProvider = ({
         console.log("Unregistering meetings...");
         webexClient.meetings.unregister().then(() => {
           console.log("Meetings unregistered");
-          // setMeeting(null);
+          setMeeting(null);
+          setMeetingJoin({
+            number: "",
+            password: "",
+            captcha: "",
+            verified: false,
+          });
         }, 3000);
       });
     } else {
@@ -748,7 +843,7 @@ export const MeetingProvider = ({
         console.log("Stopping camera stream...");
         state.localMedia.video.stop();
         console.log(`Camera stream ${state.localMedia.video} stopped`);
-        if (meeting?.currentMediaStatus.video) {
+        if (meeting?.currentMediaStatus?.video) {
           meeting
             .unpublishStreams([state.localMedia.video])
             .then(() => {
@@ -771,7 +866,7 @@ export const MeetingProvider = ({
     const baseVideoConstraints =
       state.localMedia.videoConstraints[localVideoQuality[quality]];
     const constraints = {
-      ...baseVideoConstraints, // "720p
+      ...baseVideoConstraints, // 720p
       deviceId: deviceId ? { exact: deviceId } : undefined,
     };
     try {
@@ -881,7 +976,6 @@ export const MeetingProvider = ({
       <MeetingDispatchContext.Provider value={dispatch}>
         <MeetingActionContext.Provider
           value={{
-            joinMeeting,
             leaveMeeting,
             setHandRaised,
             setAudioMuted,
@@ -895,6 +989,8 @@ export const MeetingProvider = ({
             stopCameraStream,
             setNoiseRemoval,
             setVirtualBackground,
+            setMeetingJoin,
+            setMeetingCaptcha,
             localVideoQualityOptions,
             vbgModes,
             webexClient,
@@ -936,6 +1032,15 @@ const initialState = {
   isUnmuteAllowed: true,
   meetingStatus: MEETING_STATUSES.INACTIVE,
   alertLeaveMeeting: false,
+  alertEnterPassword: false,
+  alertEnterCaptcha: false,
+  meetingJoin: {
+    number: "",
+    password: "",
+    captcha: "",
+    verified: false,
+  },
+  meetingCaptcha: {},
   overlay: {
     message: "",
     hidden: true,
