@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Select, Stack, InputLabel, Container, Paper } from "@mui/material";
@@ -9,6 +9,7 @@ import {
 import { useMeeting, useMeetingAction } from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
 import * as constants from "../../constants/meeting";
+import { CircularProgress } from "@mui/joy";
 // import cisco from "../../assets/cisco_animated.gif";
 
 const VideoSettings = ({
@@ -26,6 +27,7 @@ const VideoSettings = ({
     vbgModes,
   } = useMeetingAction(); //eslint-disable-line no-unused-vars
   const videoPreviewRef = useRef("videoPreview");
+  const [vbgModeUpdating, setVbgModeUpdating] = useState(false);
   const selectWidth = "300px";
   const selectHeight = "56px";
 
@@ -82,6 +84,12 @@ const VideoSettings = ({
       console.log("Video stream preview attached");
     }
   }, [contextState.localMedia.video, visible]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (vbgModeUpdating) {
+      setVbgModeUpdating(false);
+    }
+  }, [mediaDevices.selected.virtual_background.mode]); //eslint-disable-line react-hooks/exhaustive-deps
 
   if (!visible) {
     return null;
@@ -151,6 +159,7 @@ const VideoSettings = ({
             <Select
               native
               value={mediaDevices.selected.virtual_background?.mode || "NONE"}
+              disabled={vbgModeUpdating}
               inputProps={{
                 id: "vbg-mode",
               }}
@@ -160,6 +169,7 @@ const VideoSettings = ({
                   "Virtual background mode changed",
                   event.target.value
                 );
+                setVbgModeUpdating(true);
                 setVirtualBackground(
                   event.target.value,
                   // cisco,
@@ -187,6 +197,7 @@ const VideoSettings = ({
               zindex: 5,
               overflow: "hidden",
               borderRadius: 2,
+              position: "relative",
             }}
           >
             <Container
@@ -195,6 +206,7 @@ const VideoSettings = ({
               sx={{
                 width: 1,
                 height: 1,
+                position: "relative",
               }}
             >
               <video
@@ -206,6 +218,18 @@ const VideoSettings = ({
                 height="100%"
                 zindex={4}
               />
+              {vbgModeUpdating && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <CircularProgress variant="solid" />
+                </div>
+              )}
             </Container>
           </Paper>
         </Stack>
