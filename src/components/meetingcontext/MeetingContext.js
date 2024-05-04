@@ -275,10 +275,19 @@ export const MeetingProvider = ({
             setMeetingJoin({ verified: isPasswordValid });
           })
           .catch((error) => {
-            console.error(`Error verifying password: ${error}`);
+            if (error.name === "BadRequest") {
+              console.log(
+                "Verification failed, however looks like we are calling non Webex URI. Skipping verification."
+              );
+              setMeetingJoin({ verified: true });
+            } else {
+              console.error(
+                `Error verifying password: ${JSON.stringify(error)}`
+              );
+            }
           });
       } catch (error) {
-        console.error(`Error verifying password: ${error}`);
+        console.error(`Error verifying password: ${JSON.stringify(error)}`);
       }
     }
   }, [meeting, state.meetingJoin.password, state.meetingJoin.captcha]); //eslint-disable-line react-hooks/exhaustive-deps
