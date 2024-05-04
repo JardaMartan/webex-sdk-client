@@ -275,16 +275,11 @@ export const MeetingProvider = ({
             setMeetingJoin({ verified: isPasswordValid });
           })
           .catch((error) => {
-            if (error.name === "BadRequest") {
-              console.log(
-                "Verification failed, however looks like we are calling non Webex URI. Skipping verification."
-              );
-              setMeetingJoin({ verified: true });
-            } else {
-              console.error(
-                `Error verifying password: ${JSON.stringify(error)}`
-              );
-            }
+            console.error(`Error verifying password: ${JSON.stringify(error)}`);
+            console.log(
+              "Verification failed, however let's be optimistic. Skipping verification."
+            );
+            setMeetingJoin({ verified: true });
           });
       } catch (error) {
         console.error(`Error verifying password: ${JSON.stringify(error)}`);
@@ -532,12 +527,12 @@ export const MeetingProvider = ({
           case "remoteVideo":
             stopCameraStream();
             setRemoteMedia({ video: null });
-            setLocalMedia({ video: null });
+            stopCameraStream();
             break;
           case "remoteAudio":
             stopMicrophoneStream();
             setRemoteMedia({ audio: null });
-            setLocalMedia({ audio: null });
+            stopMicrophoneStream();
             break;
           case "remoteShare":
             setRemoteMedia({ share: null });
