@@ -64,6 +64,9 @@ export const MeetingProvider = ({
   const [meeting, setMeeting] = useState(null);
   const [addMediaOnceReady, setAddMediaOnceReady] = useState(false);
 
+  /**
+   * context reducer and a couple of helper functions
+   */
   const meetingReducer = (state, action) => {
     // console.log(
     //   `meetingContextReducer, state: ${JSON.stringify(
@@ -193,7 +196,52 @@ export const MeetingProvider = ({
     dispatch({ type: actionTypes.SET_CONTROL_PANEL, controlPanel });
   };
 
-  // create meeting
+  /**
+   * From here on is the main logic of the MeetingProvider.
+   * The meeting join is split into several steps, each in a separate useEffect. This allows to split the control logic and the UI.
+   * UI should just update the context state and the useEffects will act upon the changes. All UI components can be stateless
+   * and just react to the context state changes. All UI components should be nested under the MeetingContextProvider hierarchy.
+   *
+   * STEP 1: create Webex client - requires a valid webex access token (stored in Redux state)
+   *
+   * STEP 2: create meeting - acts upon a meeting number entered by the user (stored in the context state),
+   * in this step we also start the microphone and camera streams
+   *
+   * STEP 3: verify password or captcha - if the meeting requires a password or captcha, we verify it here.
+   * non-Webex SIP URIs are treated as verified
+   *
+   * STEP 4: join the meeting - if the verification in STEP 3 passes, we join it
+   *
+   * in-meeting events are handled by meetingStatusHandler() and memberStatusHandler().
+   * This includes media streams, meeting state changes, and member updates.
+   *
+   * Leaving the meeting intiated by user is handled by leaveMeeting(), otherwise it's handled by meetingStatusHandler().
+   *
+   * After the meeting ends, the unregisterMeetings() function is called to clean up.
+   * The media should be stopped by the meetingStatusHandler().
+   *
+   * The media streams are handled by startMicrophoneStream(), stopMicrophoneStream(), startCameraStream(), stopCameraStream().
+   */
+  // STEP 1: create Webex client
+  useEffect(() => {
+    console.log(
+      "(Re)creating Webex client due to access token change: ",
+      webexConfig.accessToken
+    );
+    try {
+      const newWebexClient = initWebex({
+        credentials: {
+          access_token: webexConfig.accessToken,
+        },
+      });
+      console.log("Webex client created");
+      setWebexClient(newWebexClient);
+    } catch (error) {
+      console.error(`Error creating webex client: ${error}`);
+    }
+  }, [webexConfig.accessToken]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  // STEP 2: create meeting
   useEffect(() => {
     if (state.meetingJoin.number && state.meetingJoin.number !== "") {
       if (!webexClient) {
@@ -248,7 +296,7 @@ export const MeetingProvider = ({
     }
   }, [state.meetingJoin.number]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  // verify password or captcha
+  // STEP 3: verify password or captcha
   useEffect(() => {
     if (meeting && !state.meetingJoin.verified) {
       console.log(
@@ -287,6 +335,7 @@ export const MeetingProvider = ({
     }
   }, [meeting, state.meetingJoin.password, state.meetingJoin.captcha]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  // STEP 4: join the meeting
   useEffect(() => {
     if (
       meeting &&
@@ -323,6 +372,7 @@ export const MeetingProvider = ({
     }
   }, [state.meetingJoin, meeting]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  // update UI based on the meeting status
   useEffect(() => {
     console.log(
       `Meeting status changed: ${state.meetingStatus}, updating control panel`
@@ -358,16 +408,20 @@ export const MeetingProvider = ({
     }
   }, [state.meetingStatus, user.loggedIn]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  // act upon meeting status changes
   useEffect(() => {
     if (meeting) {
       switch (state.meetingStatus) {
         case MEETING_STATUSES.ACTIVE:
           break;
         case MEETING_STATUSES.IN_MEETING:
-          // addMediaToMeeting();
+          // media streams creation and meeting join happen in parallel,
+          // meeting.addMedia() can only be called once and needs to be called after the media streams are ready
+          // and meeting is joined
           setAddMediaOnceReady(true);
           break;
         case MEETING_STATUSES.INACTIVE:
+          // sanity check for media streams, probably not needed, but doesn't hurt
           console.log("About to stop media streams");
           stopMicrophoneStream();
           stopCameraStream();
@@ -377,24 +431,6 @@ export const MeetingProvider = ({
       }
     }
   }, [state.meetingStatus]); //eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    console.log(
-      "(Re)creating Webex cliebt due to access token change: ",
-      webexConfig.accessToken
-    );
-    try {
-      const newWebexClient = initWebex({
-        credentials: {
-          access_token: webexConfig.accessToken,
-        },
-      });
-      console.log("Webex client created");
-      setWebexClient(newWebexClient);
-    } catch (error) {
-      console.error(`Error creating webex client: ${error}`);
-    }
-  }, [webexConfig.accessToken]); //eslint-disable-line react-hooks/exhaustive-deps
 
   async function addAudioVideoToMeeting() {
     console.log("Existing meeting media: ", meeting?.currentMediaStatus);
@@ -438,13 +474,16 @@ export const MeetingProvider = ({
     }
   }, [addMediaOnceReady, state.localMedia.video, state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  // act upon video stream change
   useEffect(() => {
     console.log("Local video source changed to ", state.localMedia.video);
+    // add video effects to the stream
     if (state.localMedia.video) {
       const vbg = mediaDevices.selected.virtual_background;
       console.log("Changing virtual background to: ", vbg);
       setVirtualBackground(vbg.mode, vbg.imageUrl, vbg.videoUrl);
     }
+    // publish media stream to the meeting if there is one already active
     if (
       state.localMedia.video
       // meeting?.hasMediaConnectionConnectedAtLeastOnce
@@ -455,20 +494,18 @@ export const MeetingProvider = ({
         meeting.publishStreams({ camera: state.localMedia.video }).then(() => {
           console.log("Meeting camera stream published");
         });
-      } else {
-        if (state.meetingStatus === MEETING_STATUSES.IN_MEETING) {
-          console.log("Adding camera stream to the meeting");
-          // addAudioVideoToMeeting();
-        }
       }
     }
   }, [state.localMedia.video]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  // act upon audio stream change
   useEffect(() => {
     console.log("Local audio source changed to ", state.localMedia.audio);
+    // set noise removal
     if (state.localMedia.audio) {
       setNoiseRemoval(mediaDevices.selected.audio_noise_removal);
     }
+    // publish media stream to the meeting if there is one already active
     if (
       state.localMedia.audio
       // meeting?.hasMediaConnectionConnectedAtLeastOnce
@@ -481,19 +518,14 @@ export const MeetingProvider = ({
           .then(() => {
             console.log("Meeting microphone stream published");
           });
-      } else {
-        if (state.meetingStatus === MEETING_STATUSES.IN_MEETING) {
-          console.log("Adding microphone stream to the meeting");
-          // addAudioVideoToMeeting();
-        }
       }
     }
   }, [state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
   // meeting state update
   const meetingStatusHandler = (event, payload) => {
-    // the payload format is inconsistent, sometimes it is payload.payload, sometimes just payload
-    // also the payload is not always an object
+    // the payload format is inconsistent, sometimes it is "payload.payload", sometimes just "payload"
+    // also the payload is not always an object and JSON.stringify() can fail
     const pload = payload ? payload.payload || payload : {};
     try {
       const ploadStr = JSON.stringify(pload);
@@ -597,6 +629,7 @@ export const MeetingProvider = ({
         );
         break;
       case "DESTROY_MEETING":
+        // meeting was ended by a remote party
         unregisterMeetings();
         break;
       default:
@@ -606,6 +639,7 @@ export const MeetingProvider = ({
   };
 
   // meeting members update
+  // the payload can contain 3 objects: added, delta, full
   const memberStatusHandler = (event, payload) => {
     // the payload format is inconsistent, sometimes it is payload.payload, sometimes just payload
     // also the payload is not always an object
@@ -661,6 +695,9 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Cleanup after the meeting ends. Sometimes there is a socket error (invalid state).
+   */
   const unregisterMeetings = () => {
     setAlertLeaveMeeting(false);
     setMeetingStatus(MEETING_STATUSES.INACTIVE);
@@ -684,6 +721,10 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Leave meeting initiated by the user
+   * @returns {Promise<void>}
+   */
   const leaveMeeting = async () => {
     if (!meeting) {
       console.error("Meeting not found when trying to leave");
@@ -699,6 +740,11 @@ export const MeetingProvider = ({
     }
   };
 
+  // following functions can be called directly on the meeting object, they may get removed in the future
+  /**
+   * Raise hand
+   * @param {boolean} isHandRaised
+   */
   const setHandRaised = (isHandRaised) => {
     meeting.members
       .raiseOrLowerHand(meeting.members.selfId, isHandRaised)
@@ -710,6 +756,10 @@ export const MeetingProvider = ({
       });
   };
 
+  /**
+   * Mute audio
+   * @param {boolean} isAudioMuted
+   */
   const setAudioMuted = (isAudioMuted) => {
     if (!meeting || !state.localMedia.audio) {
       console.log("Meeting or microphone stream not found");
@@ -719,6 +769,10 @@ export const MeetingProvider = ({
     state.localMedia.audio.setMuted(isAudioMuted);
   };
 
+  /**
+   * Mute video
+   * @param {boolean} isVideoMuted
+   */
   const setVideoMuted = (isVideoMuted) => {
     if (!meeting || !state.localMedia.video) {
       console.log("Meeting or camera stream not found");
@@ -728,6 +782,10 @@ export const MeetingProvider = ({
     state.localMedia.video.setMuted(isVideoMuted);
   };
 
+  /**
+   * Send DTMF
+   * @param {string} digit
+   */
   const sendDTMF = (digit) => {
     if (!meeting) {
       console.error("Meeting not found");
@@ -755,6 +813,9 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Get available media devices. Used by SettingsDialog to select audio/video input and audio output.
+   */
   const getMediaDevices = () => {
     getDevices().then((devices) => {
       // console.log("All detected devices - ", devices);
@@ -785,6 +846,9 @@ export const MeetingProvider = ({
     });
   };
 
+  /**
+   * Clear media devices from the context state. Can be used to make sure the device list is up to date.
+   */
   const clearMediaDevices = () => {
     dispatch({
       type: actionTypes.GET_MEDIA_DEVICES_SUCCESS,
@@ -792,6 +856,9 @@ export const MeetingProvider = ({
     });
   };
 
+  /**
+   * Stop microphone stream
+   */
   const stopMicrophoneStream = () => {
     try {
       if (state.localMedia.audio) {
@@ -805,6 +872,11 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Start microphone stream from a device. If no deviceId is provided or the requested device is not available,
+   * the default device is used.
+   * @param {string} deviceId
+   */
   const startMicrophoneStream = async (deviceId = null) => {
     stopMicrophoneStream();
     let stream;
@@ -841,6 +913,9 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Stop camera stream
+   */
   const stopCameraStream = () => {
     try {
       if (state.localMedia.video) {
@@ -864,6 +939,12 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Start camera stream from a device. If no deviceId is provided or the requested device is not available,
+   * the default device is used.
+   * @param {string} deviceId
+   * @param {string} quality
+   */
   const startCameraStream = async (deviceId = null, quality = "720p") => {
     stopCameraStream();
     let stream;
@@ -900,6 +981,10 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * (De)activate noise removal effect on the microphone stream.
+   * @param {boolean} enable
+   */
   const setNoiseRemoval = async (enable) => {
     let effect;
     try {
@@ -934,6 +1019,13 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Activate virtual background effect on the camera stream.
+   * @param {string} mode ("NONE, "BLUR", "IMAGE", "VIDEO) - see vbgModes
+   * @param {string} imageUrl
+   * @param {string} videoUrl
+   * @returns
+   */
   const setVirtualBackground = async (mode, imageUrl, videoUrl) => {
     let effect;
     try {
