@@ -1,61 +1,31 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import Button from "@mui/joy/Button";
 import Box from "@mui/joy/Box";
-import ButtonGroup from "@mui/joy/ButtonGroup";
 import RemoteVideoOverlay from "./RemoteVideoOverlay";
-import Modal from "@mui/joy/Modal";
-import ModalDialog from "@mui/joy/ModalDialog";
-import ModalClose from "@mui/joy/ModalClose";
 import Paper from "@mui/material/Paper";
 import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
-import { DialogActions, DialogContent, DialogTitle, Input } from "@mui/joy";
-// import MeetingControls from "./MeetingControls";
-// import MeetingIdForm from "./MeetingIdForm";
-import {
-  useMeeting,
-  useMeetingAction,
-  useMeetingDispatch,
-} from "../meetingcontext/MeetingContext";
+import { useMeeting } from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
-import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
-import DtmfPanel from "./DtmfPanel";
+import ModalLeaveMeeting from "./ModalLeaveMeeting";
+import ModalDtmf from "./ModalDtmf";
+import ModalMeetingPassword from "./ModalMeetingPassword";
+import ModalMeetingCaptcha from "./ModalMeetingCaptcha";
 
 const MeetingView = ({ mediaDevices }) => {
   const remoteVideoRef = useRef("remoteVideo");
   const localVideoRef = useRef("localVideo");
   const remoteAudioRef = useRef("remoteAudio");
   const contextState = useMeeting();
-  const { leaveMeeting, setMeetingJoin } = useMeetingAction();
-  const dispatch = useMeetingDispatch();
-  const [meetingPassword, setMeetingPassword] = useState("");
-  const [meetingCaptcha, setMeetingCaptcha] = useState("");
-
-  const setAlertLeaveMeeting = (alertLeaveMeeting) => {
-    dispatch({ type: actionTypes.SET_ALERT_LEAVE_MEETING, alertLeaveMeeting });
-  };
-
-  const setAlertEnterPassword = (alertEnterPassword) => {
-    dispatch({
-      type: actionTypes.SET_ALERT_ENTER_PASSWORD,
-      alertEnterPassword,
-    });
-  };
-
-  const setAlertEnterCaptcha = (alertEnterCaptcha) => {
-    dispatch({
-      type: actionTypes.SET_ALERT_ENTER_CAPTCHA,
-      alertEnterCaptcha,
-    });
-  };
 
   // console.log("Meeting status: " + contextState.meetingStatus);
   // console.log(
   //   `Media streams. Microphone: ${contextState.localMedia.audio}, Camera: ${contextState.localMedia.video}, Remote audio: ${contextState.remoteMedia.audio}, Remote video: ${contextState.remoteMedia.video}`
   // );
 
+  /**
+   * Set local video stream to the local video (selfview) element
+   */
   useEffect(() => {
     try {
       if (
@@ -81,26 +51,9 @@ const MeetingView = ({ mediaDevices }) => {
     }
   }, [contextState.localMedia.video, contextState.meetingStatus]);
 
-  useEffect(() => {
-    try {
-      if (
-        MEETING_STATUSES.IN_MEETING === contextState.meetingStatus &&
-        contextState.remoteMedia.audio
-      ) {
-        if (remoteAudioRef.current.srcObject == null) {
-          console.log("Setting remote audio");
-          remoteAudioRef.current.srcObject =
-            contextState.remoteMedia.audio.stream;
-        }
-      } else if (remoteAudioRef.current.srcObject != null) {
-        console.log("Unsetting remote audio");
-        remoteAudioRef.current.srcObject = null;
-      }
-    } catch (error) {
-      console.log(`Error setting remote audio: ${error}`);
-    }
-  }, [contextState.remoteMedia.audio, contextState.meetingStatus]);
-
+  /**
+   * Set remote video stream to the remote video element
+   */
   useEffect(() => {
     try {
       if (
@@ -121,6 +74,32 @@ const MeetingView = ({ mediaDevices }) => {
     }
   }, [contextState.remoteMedia.video, contextState.meetingStatus]);
 
+  /**
+   * Set remote audio stream to the remote audio element
+   */
+  useEffect(() => {
+    try {
+      if (
+        MEETING_STATUSES.IN_MEETING === contextState.meetingStatus &&
+        contextState.remoteMedia.audio
+      ) {
+        if (remoteAudioRef.current.srcObject == null) {
+          console.log("Setting remote audio");
+          remoteAudioRef.current.srcObject =
+            contextState.remoteMedia.audio.stream;
+        }
+      } else if (remoteAudioRef.current.srcObject != null) {
+        console.log("Unsetting remote audio");
+        remoteAudioRef.current.srcObject = null;
+      }
+    } catch (error) {
+      console.log(`Error setting remote audio: ${error}`);
+    }
+  }, [contextState.remoteMedia.audio, contextState.meetingStatus]);
+
+  /**
+   * Set audio output device for the remote audio element
+   */
   useEffect(() => {
     if (mediaDevices.selected?.audio_output.length > 0 && remoteAudioRef) {
       console.log(
@@ -144,118 +123,10 @@ const MeetingView = ({ mediaDevices }) => {
         gap: 1,
       }}
     >
-      <Modal
-        open={contextState.alertLeaveMeeting}
-        onClose={() => setAlertLeaveMeeting(true)}
-      >
-        <ModalDialog>
-          <ModalClose onClick={() => setAlertLeaveMeeting(false)} />
-          <DialogTitle>Opustit konferenci</DialogTitle>
-          <Divider inset="none" />
-          <DialogContent>Chcete opustit konferenci?</DialogContent>
-          <DialogActions
-            buttonFlex="none"
-            sx={{ pt: 1.5, justifyContent: "flex-start" }}
-          >
-            <ButtonGroup variant="outlined" color="primary" spacing="0.5rem">
-              <Button onClick={() => setAlertLeaveMeeting(false)}>Ne</Button>
-              <Button onClick={leaveMeeting}>Ano</Button>
-            </ButtonGroup>
-          </DialogActions>
-        </ModalDialog>
-      </Modal>
-      <Modal open={!contextState.dtmfPanel.hidden}>
-        <ModalDialog>
-          <ModalClose
-            onClick={() =>
-              dispatch({
-                type: actionTypes.SET_DTMF_PANEL,
-                dtmfPanel: { hidden: true },
-              })
-            }
-          />
-          <Box pt={3}>
-            <DtmfPanel />
-          </Box>
-        </ModalDialog>
-      </Modal>
-      <Modal
-        open={contextState.alertEnterPassword}
-        onClose={() => setAlertEnterPassword(false)}
-      >
-        <ModalDialog>
-          <ModalClose onClick={() => setAlertEnterPassword(false)} />
-          <DialogTitle>Heslo konference</DialogTitle>
-          <Divider inset="none" />
-          <DialogContent>
-            Zadejte heslo konference
-            <Input
-              value={meetingPassword}
-              onChange={(e) => setMeetingPassword(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions
-            buttonFlex="none"
-            sx={{ pt: 1.5, justifyContent: "flex-start" }}
-          >
-            <ButtonGroup variant="outlined" color="primary" spacing="0.5rem">
-              <Button onClick={() => setAlertEnterPassword(false)}>
-                Zrušit
-              </Button>
-              <Button
-                onClick={() => {
-                  setMeetingJoin({ password: meetingPassword });
-                  setMeetingPassword("");
-                  setAlertEnterPassword(false);
-                }}
-              >
-                OK
-              </Button>
-            </ButtonGroup>
-          </DialogActions>
-        </ModalDialog>
-      </Modal>
-      <Modal
-        open={contextState.alertEnterCaptcha}
-        onClose={() => setAlertEnterCaptcha(false)}
-      >
-        <ModalDialog>
-          <ModalClose onClick={() => setAlertEnterCaptcha(false)} />
-          <DialogTitle>Kód z obrázku</DialogTitle>
-          <Divider inset="none" />
-          <DialogContent>
-            Zadejte kód z obrázku
-            <img
-              src={contextState.meetingCaptcha.verificationImageURL}
-              alt="Captcha"
-              style={{ display: "block" }}
-            />
-            <Input
-              value={meetingCaptcha}
-              onChange={(e) => setMeetingCaptcha(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions
-            buttonFlex="none"
-            sx={{ pt: 1.5, justifyContent: "flex-start" }}
-          >
-            <ButtonGroup variant="outlined" color="primary" spacing="0.5rem">
-              <Button onClick={() => setAlertEnterCaptcha(false)}>
-                Zrušit
-              </Button>
-              <Button
-                onClick={() => {
-                  setMeetingJoin({ captcha: meetingCaptcha });
-                  setMeetingCaptcha("");
-                  setAlertEnterCaptcha(false);
-                }}
-              >
-                OK
-              </Button>
-            </ButtonGroup>
-          </DialogActions>
-        </ModalDialog>
-      </Modal>
+      <ModalLeaveMeeting />
+      <ModalDtmf />
+      <ModalMeetingPassword />
+      <ModalMeetingCaptcha />
       {/* <MeetingIdForm /> */}
       <Box
         visibility={
@@ -349,11 +220,6 @@ const MeetingView = ({ mediaDevices }) => {
         <audio id="remote-audio" controls autoPlay ref={remoteAudioRef} />
       </Box>
       {/* <MeetingControls /> */}
-
-      {/* <Box>
-        Local Audio
-        <audio id="local-audio" muted controls ref={localAudioRef} />
-      </Box> */}
     </Box>
   );
 };

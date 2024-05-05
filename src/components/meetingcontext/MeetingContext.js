@@ -29,8 +29,7 @@ import {
 
 /* TODO:
 - 24kHz problem of AirPods (BNR)
-- virtual background
-- audio output
+- handle cancel of password/captcha modals - should leave the meeting or add an option to re-open the modals?
 
 stretch:
 - content share
@@ -697,7 +696,7 @@ export const MeetingProvider = ({
   };
 
   /**
-   * Cleanup after the meeting ends. Sometimes there is a socket error (invalid state).
+   * Cleanup after the meeting ends. Sometimes there is a INVALID_STATE_ERROR error related to socket communication.
    */
   const unregisterMeetings = () => {
     setAlertLeaveMeeting(false);
@@ -1088,6 +1087,9 @@ export const MeetingProvider = ({
             setVirtualBackground,
             setMeetingJoin,
             setMeetingCaptcha,
+            setAlertLeaveMeeting,
+            setAlertEnterPassword,
+            setAlertEnterCaptcha,
             localVideoQualityOptions,
             vbgModes,
             webexClient,
