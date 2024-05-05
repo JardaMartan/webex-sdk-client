@@ -217,10 +217,11 @@ export const MeetingProvider = ({
    *
    * Leaving the meeting intiated by user is handled by leaveMeeting(), otherwise it's handled by meetingStatusHandler().
    *
-   * After the meeting ends, the unregisterMeetings() function is called to clean up.
+   * After the meeting ends, the unregisterMeetings() is called to clean up.
    * The media should be stopped by the meetingStatusHandler().
    *
    * The media streams are handled by startMicrophoneStream(), stopMicrophoneStream(), startCameraStream(), stopCameraStream().
+   * Media stream effects can be added on the fly during the meeting.
    */
   // STEP 1: create Webex client
   useEffect(() => {
@@ -287,7 +288,7 @@ export const MeetingProvider = ({
           return;
         });
 
-      // start media streams - takes a while, but both are async
+      // start media streams - takes a while, but both are async so they don't block the meeting join process
       startMicrophoneStream(mediaDevices.selected.audio_input);
       startCameraStream(
         mediaDevices.selected.video_input,
