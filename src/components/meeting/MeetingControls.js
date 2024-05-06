@@ -10,6 +10,8 @@ import {
   BackHand,
   Close,
   Dialpad,
+  PresentToAll,
+  CancelPresentation,
 } from "@mui/icons-material";
 import {
   useMeeting,
@@ -23,7 +25,15 @@ const MeetingControls = () => {
   const buttonSides = 48;
   const contextState = useMeeting();
   const dispatch = useMeetingDispatch();
-  const { setHandRaised, setAudioMuted, setVideoMuted } = useMeetingAction();
+  const {
+    setHandRaised,
+    setAudioMuted,
+    setVideoMuted,
+    startScreenShare,
+    stopScreenShare,
+  } = useMeetingAction();
+
+  const isScreenShare = contextState.localMedia.share.video;
 
   return (
     <Box
@@ -81,6 +91,23 @@ const MeetingControls = () => {
           sx={{ width: buttonSides, height: buttonSides }}
         >
           <BackHand fontSize="large" />
+        </IconButton>
+        <IconButton
+          color={isScreenShare ? "danger" : "primary"}
+          onClick={() => {
+            if (isScreenShare) {
+              stopScreenShare();
+            } else {
+              startScreenShare();
+            }
+          }}
+          sx={{ width: buttonSides, height: buttonSides }}
+        >
+          {isScreenShare ? (
+            <CancelPresentation fontSize="large" />
+          ) : (
+            <PresentToAll fontSize="large" />
+          )}
         </IconButton>
         <IconButton
           color="primary"

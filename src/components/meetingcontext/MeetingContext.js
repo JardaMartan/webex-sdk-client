@@ -30,13 +30,13 @@ import {
 /* TODO:
 - 24kHz problem of AirPods (BNR)
 - handle cancel of password/captcha modals - should leave the meeting or add an option to re-open the modals?
-
-stretch:
-- content share
-- audio level indicator in audio settings
 - participants list
 - chat
-- password entry at the meeting start
+- raise/lower hand using DTMF (configurable in settings) if meeting is not Webex
+
+stretch:
+- audio level indicator in audio settings
+- audio output test in audio settings
 - multistream
 
 */
@@ -425,6 +425,7 @@ export const MeetingProvider = ({
           console.log("About to stop media streams");
           stopMicrophoneStream();
           stopCameraStream();
+          stopScreenShare();
           break;
         default:
           console.log("No changes in meeting status for media devices");
@@ -451,6 +452,9 @@ export const MeetingProvider = ({
       localStreams: {
         ...camOption,
         ...micOption,
+        receiveVideo: true,
+        receiveAudio: true,
+        receiveShare: true,
       },
       allowMediaInLobby: false,
     };
@@ -521,6 +525,34 @@ export const MeetingProvider = ({
       }
     }
   }, [state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    console.log("Local share source changed to ", state.localMedia.share);
+    // publish media stream to the meeting if there is one already active
+    if (state.localMedia.share.video) {
+      state.localMedia.share.video.on("stream-ended", () => {
+        console.log("Local share video stream ended");
+
+        setLocalMedia({ share: { video: undefined } });
+      });
+
+      publishScreenShare();
+    } else {
+      unpublishScreenShare();
+    }
+  }, [state.localMedia.share.video]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    console.log("Local share source changed to ", state.localMedia.share);
+    // publish media stream to the meeting if there is one already active
+    if (state.localMedia.share.audio) {
+      state.localMedia.share.audio?.on("stream-ended", () => {
+        console.log("Local share audio stream ended");
+
+        setLocalMedia({ share: { audio: undefined } });
+      });
+    }
+  }, [state.localMedia.share.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
   // meeting state update
   const meetingStatusHandler = (event, payload) => {
@@ -1067,6 +1099,87 @@ export const MeetingProvider = ({
     }
   };
 
+  async function startScreenShare() {
+    // Using async/await to make code more readable
+    console.log("Starting screen share...");
+    try {
+      //TODO: Add audio share toggle in sample app
+      const [localShareVideoStream, localShareAudioStream] =
+        await webexClient.meetings.mediaHelpers.createDisplayStreamWithAudio();
+
+      setLocalMedia({
+        share: {
+          video: localShareVideoStream,
+          audio: localShareAudioStream,
+        },
+      });
+    } catch (error) {
+      console.log("Error starting screen share: ", error);
+    }
+  }
+
+  async function publishScreenShare() {
+    if (!state.localMedia.share || !state.localMedia.share.video) {
+      console.error("Screen share stream not available!");
+
+      throw new Error("screen share stream not available");
+    }
+
+    try {
+      console.log("Publishing share stream...");
+      await meeting.publishStreams({
+        screenShare: {
+          video: state.localMedia.share.video,
+          audio: state.localMedia.share.audio,
+        },
+      });
+
+      console.log("Successfully started sharing in meeting!");
+    } catch (error) {
+      console.error("Error starting screen share in meeting!", error);
+    }
+  }
+
+  async function unpublishScreenShare() {
+    console.log("Unpublishing share stream...");
+    try {
+      const streamsToUnpublish = [];
+
+      if (state.localMedia.share.audio) {
+        streamsToUnpublish.push(state.localMedia.share.audio);
+      }
+      if (state.localMedia.share.video) {
+        streamsToUnpublish.push(state.localMedia.share.video);
+      }
+
+      if (streamsToUnpublish.length) {
+        await meeting.unpublishStreams(streamsToUnpublish);
+      }
+
+      console.log("Unpublished share stream!");
+    } catch (error) {
+      console.log("Error unpublishing share stream: ", error);
+    }
+  }
+
+  async function stopScreenShare() {
+    console.log("Stopping screen share...");
+    try {
+      if (state.localMedia.share.audio) {
+        state.localMedia.share.audio?.stop();
+      }
+      if (state.localMedia.share.video) {
+        state.localMedia.share.video?.stop();
+      }
+
+      setLocalMedia({ share: { audio: undefined, video: undefined } });
+
+      console.log("Successfully stopped sharing!");
+    } catch (error) {
+      console.error("Error stopping screen share: ", error);
+    }
+  }
+
   return (
     <MeetingContext.Provider value={state}>
       <MeetingDispatchContext.Provider value={dispatch}>
@@ -1090,6 +1203,8 @@ export const MeetingProvider = ({
             setAlertLeaveMeeting,
             setAlertEnterPassword,
             setAlertEnterCaptcha,
+            startScreenShare,
+            stopScreenShare,
             localVideoQualityOptions,
             vbgModes,
             webexClient,
@@ -1129,6 +1244,7 @@ const initialState = {
   isAudioMuted: false,
   isVideoMuted: false,
   isUnmuteAllowed: true,
+  isScreenShare: false,
   meetingStatus: MEETING_STATUSES.INACTIVE,
   alertLeaveMeeting: false,
   alertEnterPassword: false,
