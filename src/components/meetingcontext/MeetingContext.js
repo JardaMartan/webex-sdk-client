@@ -30,17 +30,17 @@ import {
 
 /* TODO:
 - 24kHz problem of AirPods (BNR)
+  see: https://www.npmjs.com/package/@webex/web-media-effects#supported-bitrates
+
 - handle cancel of password/captcha modals - should leave the meeting or add an option to re-open the modals?
-- remote screen share (different video layout)
 - participants list
 - chat
 - raise/lower hand using DTMF (configurable in settings) if meeting is not Webex
+- RemoteVideoOverlay in multistream mode
 
 stretch:
 - audio level indicator in audio settings
 - audio output test in audio settings
-- multistream
-
 */
 
 const MeetingContext = createContext(null);
@@ -548,6 +548,10 @@ export const MeetingProvider = ({
     }
   }, [state.meetingStatus]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Add local media (audio/video) to the meeting. addMedia() should be called only once during the meeting,
+   * the subsequent media changes are handled by publishStreams().
+   */
   async function addAudioVideoToMeeting() {
     console.log("Existing meeting media: ", meeting?.currentMediaStatus);
     const camOption =
@@ -586,6 +590,10 @@ export const MeetingProvider = ({
     }
   }
 
+  /**
+   * Add local media (audio/video) to the meeting. Make sure the media streams are ready before calling this function,
+   * because meeting join, audio and video streams initialization happen in parallel.
+   */
   useEffect(() => {
     if (addMediaOnceReady && state.localMedia.video && state.localMedia.audio) {
       addAudioVideoToMeeting();
@@ -593,7 +601,9 @@ export const MeetingProvider = ({
     }
   }, [addMediaOnceReady, state.localMedia.video, state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  // act upon video stream change
+  /**
+   * Re-publish video streams to the meeting when the media devices change.
+   */
   useEffect(() => {
     console.log("Local video source changed to ", state.localMedia.video);
     // add video effects to the stream
@@ -632,7 +642,9 @@ export const MeetingProvider = ({
     }
   }, [state.localMedia.video, state.isMultistream]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  // act upon audio stream change
+  /**
+   * Re-publish audio streams to the meeting when the media devices change.
+   */
   useEffect(() => {
     console.log("Local audio source changed to ", state.localMedia.audio);
     // set noise removal
@@ -656,6 +668,9 @@ export const MeetingProvider = ({
     }
   }, [state.localMedia.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Re-publish screen share streams to the meeting when the sharing source change.
+   */
   useEffect(() => {
     console.log("Local share source changed to ", state.localMedia.share);
     // publish media stream to the meeting if there is one already active
@@ -672,6 +687,9 @@ export const MeetingProvider = ({
     }
   }, [state.localMedia.share.video]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Re-publish screen share audio to the meeting when the sharing source change.
+   */
   useEffect(() => {
     console.log("Local share source changed to ", state.localMedia.share);
     // publish media stream to the meeting if there is one already active
@@ -684,6 +702,11 @@ export const MeetingProvider = ({
     }
   }, [state.localMedia.share.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Watch the screen area for dimensions change. This area is used by meeting video and content share.
+   * The dimensions are used to calculate the video and share layout. It's essential in multistream mode
+   * as there are many independent video elements to arrange on the screen.
+   */
   useEffect(() => {
     function updateSize() {
       // Get the viewport dimensions
@@ -716,6 +739,10 @@ export const MeetingProvider = ({
     return () => window.removeEventListener("resize", updateSize);
   }, []); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Set the screen area sizes for video and content share.
+   * Set the "videoFactor" to the desired ratio of video to content share area.
+   */
   useEffect(() => {
     if (state.viewPort.screen.width > 0 && state.viewPort.screen.height > 0) {
       const videoFactor = 0.25;
@@ -802,8 +829,14 @@ export const MeetingProvider = ({
       case "meeting:stoppedSharingLocal":
         console.log(`Local sharing stopped`);
         break;
-      // multistream events
-      case "media:remoteVideo:layoutChanged": // first event in multistream
+
+      // multistream events start - events below are related only to multistream mode
+
+      // layout change event provides remote media streams in groups ("main", "thumbnails")
+      // "screenShareVideo" is provided only with some layouts, specifically "ScreenShareView".
+      // Possible layouts are: "AllEqual", "ScreenShareView", "OnePlusFive", "OnePlusFive", "Stage"
+      // layout change can be requested by calling meeting.remoteMediaManager.setLayout()
+      case "media:remoteVideo:layoutChanged":
         const {
           layoutId,
           activeSpeakerVideoPanes,
@@ -901,6 +934,7 @@ export const MeetingProvider = ({
         setActiveSpeakers(pload.memberIds);
         break;
       // end multistream events
+
       case "meeting:stateChange":
         console.log(`Meeting state changed to: ${pload.currentState}`); // ${JSON.stringify(state)}`);
         switch (pload.currentState) {
@@ -960,6 +994,7 @@ export const MeetingProvider = ({
     }
   };
 
+  // just for logging
   useEffect(() => {
     console.log(`Viewport changed: ${JSON.stringify(state.viewPort)}`);
   }, [state.viewPort]);
@@ -997,6 +1032,20 @@ export const MeetingProvider = ({
     }
   }, [state.isRemoteShareActive, meeting?.remoteMediaManager]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Derived from https://github.com/webex/webex-js-sdk/blob/3132b517eeb146217e8f52824fbb93276cd7af90/docs/samples/browser-plugin-meetings/app.js#L2281
+   * Create a video pane object for the multistream video layout. Original updateVideoPane() mixes the logic and the UI,
+   * this function is just for creating the video pane object. UI is handled separately in MeetingVideoViewMultistream.js.
+   *
+   * @param {RemoteMedia} media - media object provided by the meeting
+   * @param {MediaStream} stream - media stream object which can be attached to <video> element
+   * @param {string} paneId - unique ID of the video pane
+   * @param {string} sourceState - "live" or "no source"
+   * @param {string} memberId - member ID associated to the video source
+   * @param {string} title - title of the video pane
+   * @param {string} debugString - debug string for logging
+   * @returns Object
+   */
   const createVideoPane = (
     media,
     stream,
@@ -1006,7 +1055,6 @@ export const MeetingProvider = ({
     title,
     debugString
   ) => {
-    // eslint-disable-next-line no-param-reassign
     const videoPane = {
       media: media,
       stream: stream,
@@ -1018,7 +1066,6 @@ export const MeetingProvider = ({
     videoPane.sourceState = sourceState;
 
     if (sourceState === "no source") {
-      // eslint-disable-next-line no-param-reassign
       videoPane.isActive = false;
       videoPane.isLive = false;
       videoPane.name = "";
@@ -1027,10 +1074,8 @@ export const MeetingProvider = ({
         `createVideoPane() :: ${debugString} ${sourceState} ${title}`
       );
     } else {
-      // eslint-disable-next-line no-param-reassign
       videoPane.isActive = true;
 
-      // videoPane.name = meeting?.members.membersCollection.get(memberId).name; //somehow this is "null"
       try {
         videoPane.name =
           meetingRef.current.members.membersCollection.get(memberId).name;
@@ -1038,10 +1083,6 @@ export const MeetingProvider = ({
         videoPane.name = title;
       }
 
-      // if (memberId && currentActiveSpeakersMemberIds.includes(memberId)) {
-      //   videoPane.nameLabelEl.classList.add('speaking');
-      // }
-      // eslint-disable-next-line no-param-reassign
       videoPane.memberId = memberId;
 
       videoPane.isLive = sourceState === "live";
@@ -1483,6 +1524,9 @@ export const MeetingProvider = ({
     }
   };
 
+  /**
+   * Start screen share stream
+   */
   async function startScreenShare() {
     // Using async/await to make code more readable
     console.log("Starting screen share...");
@@ -1502,6 +1546,9 @@ export const MeetingProvider = ({
     }
   }
 
+  /**
+   * Publish screen share stream to the meeting
+   */
   async function publishScreenShare() {
     if (!state.localMedia.share || !state.localMedia.share.video) {
       console.error("Screen share stream not available!");
@@ -1524,6 +1571,9 @@ export const MeetingProvider = ({
     }
   }
 
+  /**
+   * Unpublish screen share stream from the meeting
+   */
   async function unpublishScreenShare() {
     console.log("Unpublishing share stream...");
     try {
@@ -1546,6 +1596,9 @@ export const MeetingProvider = ({
     }
   }
 
+  /**
+   * Stop screen share stream
+   */
   async function stopScreenShare() {
     console.log("Stopping screen share...");
     try {
@@ -1601,6 +1654,8 @@ export const MeetingProvider = ({
   );
 };
 
+// video resolutions used to setup the local video stream
+// selection should affect the network bandwidth utilization
 const localVideoQuality = {
   "360p": "360p",
   "480p": "480p",
@@ -1616,6 +1671,7 @@ const localVideoConstraints = {
   [localVideoQuality["1080p"]]: { width: 1920, height: 1080 },
 };
 
+// virtual background modes
 const vbgModes = {
   NONE: "Nic",
   BLUR: "Rozmazání",
@@ -1623,6 +1679,7 @@ const vbgModes = {
   VIDEO: "Video",
 };
 
+// initial value for "state" variable
 const initialState = {
   isHandRaised: false,
   isAudioMuted: false,

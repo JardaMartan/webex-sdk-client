@@ -165,7 +165,7 @@ const VideoElement = ({
                 justifyContent: "flex-start",
                 borderRadius: 2,
                 border: activeSpeaker ? borderSize : "none",
-                zindex: activeSpeaker ? 20 : 0,
+                zindex: activeSpeaker ? 10 : 0,
               }}
             ></Box>
           </Div>

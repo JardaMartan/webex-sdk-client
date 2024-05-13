@@ -13,18 +13,20 @@ const MeetingVideoViewMultistream = () => {
   const [videoHeight, setVideoHeight] = useState(
     contextState.viewPort.video.height
   );
-  const [shareHeight, setShareHeight] = useState(
-    contextState.viewPort.share.height
-  );
   const [isoNumrows, setIsoNumrows] = useState(1);
   const [shareStream, setShareStream] = useState(null);
 
+  /**
+   * Rearrange videos on the screen if there is a change in the multistream video - added/removed streams, re-created streams, etc.
+   */
   useEffect(() => {
     console.warn("Multistream video updated: ", contextState.multistreamVideo);
     rearrangeIsotope();
   }, [contextState.multistreamVideo]); //eslint-disable-line react-hooks/exhaustive-deps
 
-  //eslint-disable-next-line react-hooks/exhaustive-deps
+  /**
+   * Setup the isotope layout or update it when the screen dimensions change.
+   */
   useEffect(() => {
     if (isotope.current) {
       rearrangeIsotope();
@@ -59,6 +61,9 @@ const MeetingVideoViewMultistream = () => {
     }
   }, [contextState.viewPort]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Rearrange isotope items on the screen
+   */
   const rearrangeIsotope = () => {
     if (isotope.current) {
       console.log("Rearranging isotope items");
@@ -68,6 +73,12 @@ const MeetingVideoViewMultistream = () => {
     }
   };
 
+  /**
+   * We rely on isotope to arrange the video elements on the screen. Unfortunately the video element dimensions
+   * cannot be set in percentage because it would result in 0 height. Thus isotope cannot adjust the dimensions
+   * automatically. Instead we have to check for isotope to grow beyond the screen size and then we have to adjust
+   * number of rows to which the video elements are arranged. Number of rows then determines the height of each video element.
+   */
   useEffect(
     () => {
       if (
@@ -89,6 +100,9 @@ const MeetingVideoViewMultistream = () => {
     ]
   );
 
+  /**
+   * Update height of the video elements.
+   */
   useEffect(() => {
     const newHeight = Math.floor(
       contextState.viewPort.video.height / (isoNumrows || 1)
@@ -97,11 +111,17 @@ const MeetingVideoViewMultistream = () => {
     setVideoHeight(newHeight);
   }, [isoNumrows, contextState.viewPort.video.height]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Make sure isotope arranges the video elements on the screen after video height has been updated.
+   */
   useEffect(() => {
     console.log("Video height changed: ", videoHeight, ", rearranging isotope");
     rearrangeIsotope();
   }, [videoHeight]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Set remote share stream to the ShareElement.
+   */
   useEffect(() => {
     if (
       contextState.isRemoteShareActive &&
@@ -120,22 +140,20 @@ const MeetingVideoViewMultistream = () => {
     }
   }, [contextState.isRemoteShareActive, contextState.multistreamVideo?.share]);
 
-  useEffect(() => {
-    console.log(
-      `Share height changed to: ${contextState.viewPort.share.height}`
-    );
-    setShareHeight(contextState.viewPort.share.height);
-  }, [contextState.viewPort.share.height]); //eslint-disable-line react-hooks/exhaustive-deps
-
   return (
-    <div>
+    <div position="relative" display="flex">
+      {/* Messages on the screen */}
       <RemoteVideoOverlay className="remote-video-overlay" />
+      {/* Video elements arranged by isotope */}
       <div
         id="multistreamPanel"
+        position="absolute"
+        justifyContent="flex-start"
         ref={isoRef}
         height={contextState.viewPort.video.height}
         width={contextState.viewPort.video.width}
       >
+        {/* Participant videos */}
         {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
         contextState.multistreamVideo ? (
           Object.values(
@@ -159,6 +177,7 @@ const MeetingVideoViewMultistream = () => {
         ) : (
           <></>
         )}
+        {/* Selfview */}
         {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
         contextState.multistreamVideo?.self ? (
           Object.values(contextState.multistreamVideo.self).map(
@@ -179,6 +198,7 @@ const MeetingVideoViewMultistream = () => {
           <></>
         )}
       </div>
+      {/* Screen share */}
       {contextState.meetingStatus !== MEETING_STATUSES.INACTIVE &&
         contextState.meetingStatus !== MEETING_STATUSES.JOINING &&
         contextState.isRemoteShareActive && (
@@ -186,7 +206,7 @@ const MeetingVideoViewMultistream = () => {
             key="share"
             stream={shareStream}
             width={contextState.viewPort.share.width}
-            height={shareHeight}
+            height={contextState.viewPort.share.height}
           />
         )}
     </div>

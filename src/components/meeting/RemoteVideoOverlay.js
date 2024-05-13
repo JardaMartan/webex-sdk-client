@@ -21,7 +21,7 @@ const RemoteVideoOverlay = () => {
   if (contextState.overlay.hidden) return null;
 
   return (
-    <Div theme={theme} sx={{ width: 1 }}>
+    <Div theme={theme} position="absolute" zIndex={20} sx={{ width: 1 }}>
       <Sheet color="neutral" variant="soft" sx={{ p: 4, zIndex: 10 }}>
         {contextState.overlay.canClose && (
           <ModalClose
