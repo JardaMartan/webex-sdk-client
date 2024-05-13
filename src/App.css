@@ -94,3 +94,9 @@
     width: 100%; /* 1 column on smallest screens */
   }
 }
+
+.video-name::before,
+.video-name::after {
+  content: "  ";
+  white-space: pre;
+}

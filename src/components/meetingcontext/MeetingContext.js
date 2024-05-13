@@ -63,7 +63,7 @@ export const MeetingProvider = ({
   ...props
 }) => {
   const [webexClient, setWebexClient] = useState(null);
-  const [meeting, setMeeting] = useState(null);
+  const [meeting, setMeeting] = useState();
   const meetingRef = useRef(meeting);
   const [addMediaOnceReady, setAddMediaOnceReady] = useState(false);
 
@@ -191,6 +191,26 @@ export const MeetingProvider = ({
           ...state,
           viewPort: { ...state.viewPort, ...action.viewPort },
         };
+      case actionTypes.SET_MEMBERS:
+        return {
+          ...state,
+          members: action.members,
+        };
+      case actionTypes.ADD_MEMBERS:
+      case actionTypes.UPDATE_MEMBERS:
+        return {
+          ...state,
+          members: { ...state.members, ...action.members },
+        };
+      case actionTypes.REMOVE_MEMBERS:
+        const newMembers = { ...state.members };
+        action.members.forEach((member) => {
+          delete newMembers[member.id];
+        });
+        return {
+          ...state,
+          members: newMembers,
+        };
       default:
         return state;
     }
@@ -304,6 +324,41 @@ export const MeetingProvider = ({
 
   const setViewPort = (viewPort) => {
     dispatch({ type: actionTypes.SET_VIEW_PORT, viewPort });
+  };
+
+  function reduceArray(array, key) {
+    if (Array.isArray(array) && array.length > 0 && key in array[0]) {
+      return array.reduce((obj, item) => {
+        obj[item[key]] = item;
+        return obj;
+      }, {});
+    } else {
+      return array;
+    }
+  }
+
+  const setMembers = (members) => {
+    console.log(`Setting members: ${JSON.stringify(members)}`);
+    dispatch({ type: actionTypes.SET_MEMBERS, members });
+  };
+
+  const updateMembers = (members) => {
+    console.log(`Updating members: ${JSON.stringify(members)}`);
+    const newMembers = reduceArray(members, "id");
+    dispatch({ type: actionTypes.UPDATE_MEMBERS, members: newMembers });
+  };
+
+  const addMembers = (members) => {
+    console.log(`Adding members: ${JSON.stringify(members)}`);
+    const newMembers = reduceArray(members, "id");
+    dispatch({ type: actionTypes.ADD_MEMBERS, members: newMembers });
+  };
+
+  //eslint-disable-next-line no-unused-vars
+  const removeMembers = (members) => {
+    console.log(`Removing members: ${JSON.stringify(members)}`);
+    const newMembers = reduceArray(members, "id");
+    dispatch({ type: actionTypes.REMOVE_MEMBERS, members: newMembers });
   };
 
   /**
@@ -625,14 +680,18 @@ export const MeetingProvider = ({
         });
       }
     }
-    if (state.isMultistream && state.localMedia.video) {
+    if (
+      state.isMultistream &&
+      state.localMedia.video &&
+      meeting?.members?.selfId
+    ) {
       console.log("Adding selfview to multistream video panels");
       const selfVideoPane = createVideoPane(
         state.localMedia.video,
         state.localMedia.video.outputStream,
         state.localMedia.video.outputStream.id,
         "live",
-        meeting ? meeting.members.selfId : "self",
+        meeting.members.selfId,
         "self",
         "initialization"
       );
@@ -640,7 +699,7 @@ export const MeetingProvider = ({
         [state.localMedia.video.id]: selfVideoPane,
       });
     }
-  }, [state.localMedia.video, state.isMultistream]); //eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.localMedia.video, state.isMultistream, meeting?.members?.selfId]); //eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Re-publish audio streams to the meeting when the media devices change.
@@ -1112,41 +1171,57 @@ export const MeetingProvider = ({
     switch (event) {
       case "members:update": {
         if (pload.delta) {
-          if (pload.delta.updated && pload.delta.updated.length > 0) {
-            console.log(
-              "Members updated: " + JSON.stringify(pload.delta.updated)
-            );
-            for (let [key, value] of Object.entries(pload.delta.updated)) {
-              console.log(`Member ${key} updated: ${JSON.stringify(value)}`);
-              if (value.isSelf) {
-                if (value.isInMeeting) {
-                  setIsHandRaised(value.isHandRaised);
-                  setIsAudioMuted(value.isAudioMuted);
-                  setIsVideoMuted(value.isVideoMuted);
-                  setIsUnmuteAllowed(
-                    !value.participant.controls.audio.disallowUnmute
-                  );
-                } else if (value.isInLobby) {
-                  // in lobby
-                } else {
-                  // not in meeting
-                  // leaveMeeting();
-                  // unregisterMeetings();
+          if (
+            pload.delta.removed &&
+            pload.delta.removed.length === 0 &&
+            pload.delta.updated &&
+            pload.delta.updated.length === 0 &&
+            pload.delta.added &&
+            pload.delta.added.length === 0
+          ) {
+            console.log("No updates, performing full sync of members");
+            setMembers(pload.full);
+          } else {
+            if (pload.delta.updated && pload.delta.updated.length > 0) {
+              console.log(
+                "Members updated: " + JSON.stringify(pload.delta.updated)
+              );
+              for (let [key, value] of Object.entries(pload.delta.updated)) {
+                console.log(`Member ${key} updated: ${JSON.stringify(value)}`);
+                if (value.isSelf) {
+                  if (value.isInMeeting) {
+                    setIsHandRaised(value.isHandRaised);
+                    setIsAudioMuted(value.isAudioMuted);
+                    setIsVideoMuted(value.isVideoMuted);
+                    setIsUnmuteAllowed(
+                      !value.participant.controls.audio.disallowUnmute
+                    );
+                  } else if (value.isInLobby) {
+                    // in lobby
+                  } else {
+                    // not in meeting
+                    // leaveMeeting();
+                    // unregisterMeetings();
+                  }
                 }
               }
-            }
-          } else if (pload.delta.added && pload.delta.added.length > 0) {
-            // the event of "members:update" with "added" and "isSelf" is probably the best way to detect that we are in the meeting and we can start sending/receiving media
-            const added = pload.delta.added.filter(
-              (member) => member.isSelf && member.isInMeeting
-            );
-            if (added.length > 0) {
-              console.log("Self added to the meeting");
-              setMeetingStatus(MEETING_STATUSES.IN_MEETING);
+              updateMembers(pload.delta.updated);
+            } else if (pload.delta.added && pload.delta.added.length > 0) {
+              // the event of "members:update" with "added" and "isSelf" is probably the best way to detect that we are in the meeting and we can start sending/receiving media
+              const added = pload.delta.added.filter(
+                (member) => member.isSelf && member.isInMeeting
+              );
+              if (added.length > 0) {
+                console.log("Self added to the meeting");
+                setMeetingStatus(MEETING_STATUSES.IN_MEETING);
+              }
+              addMembers(pload.delta.added);
             }
           }
+        } else {
+          console.log("Full sync of members");
+          setMembers(pload.full);
         }
-        // setParticipants(payload.full);
         break;
       }
     }
@@ -1163,7 +1238,7 @@ export const MeetingProvider = ({
         console.log("Unregistering meetings...");
         webexClient.meetings.unregister().then(() => {
           console.log("Meetings unregistered");
-          setMeeting(null);
+          setMeeting(undefined);
           setMeetingJoin({
             number: "",
             password: "",
@@ -1174,7 +1249,7 @@ export const MeetingProvider = ({
       });
     } else {
       console.log("Meetings not registered");
-      setMeeting(null);
+      setMeeting(undefined);
     }
   };
 

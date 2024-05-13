@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Box, Container, Paper } from "@mui/material";
 import { styled } from "@mui/system";
 import { useMeeting } from "../meetingcontext/MeetingContext";
+import { MicOffOutlined, MicOutlined } from "@mui/icons-material";
 
 const VideoElement = ({
   videoPane,
@@ -21,6 +22,7 @@ const VideoElement = ({
     backgroundColor: "transparent",
   }));
   const [activeSpeaker, setActiveSpeaker] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
 
   useEffect(() => {
     if (videoPane?.stream && videoElement) {
@@ -80,6 +82,15 @@ const VideoElement = ({
     }
   }, [contextState.activeSpeakers]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    try {
+      const member = contextState.members[videoPane.memberId];
+      setIsAudioMuted(member.isAudioMuted);
+    } catch (error) {
+      console.log(`Error getting member for video pane ${videoPane.memberId}`);
+    }
+  }, [contextState.members]); //eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Box
       className={
@@ -114,7 +125,7 @@ const VideoElement = ({
           height: 1,
           position: "absolute",
           overflow: "hidden",
-          borderRadius: 2,
+          borderRadius: 1,
           justifyContent: "flex-start",
         }}
       >
@@ -142,16 +153,30 @@ const VideoElement = ({
             <Box
               color="white"
               variant="soft"
+              className="video-name"
               sx={{
-                width: 1,
-                bottom: 0,
-                right: 0,
+                // width: 1,
+                bottom: 3,
+                left: 3,
                 zindex: 5,
+                borderRadius: 1,
+                fontSize: 12,
                 position: "absolute",
-                justifyContent: "flex-end",
+                justifyContent: "flex-start",
                 backgroundColor: `rgba(0, 0, 0, 0.6)`,
               }}
             >
+              {activeSpeaker ? (
+                <MicOutlined sx={{ fontSize: 12, color: "lightseagreen" }} />
+              ) : (
+                ""
+              )}
+              {isAudioMuted ? (
+                <MicOffOutlined sx={{ fontSize: 12, color: "red" }} />
+              ) : (
+                ""
+              )}
+              &nbsp;
               {videoPane.name}
             </Box>
             <Box
