@@ -44,6 +44,9 @@ const initialState = {
       video: null,
     },
   },
+  settings: {
+    multistream: false,
+  },
 };
 
 export default initialState;

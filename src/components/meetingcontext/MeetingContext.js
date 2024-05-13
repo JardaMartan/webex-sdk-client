@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useReducer,
   useState,
+  useRef,
 } from "react";
 import * as actionTypes from "./MeetingContextActionTypes";
 import propTypes from "prop-types";
@@ -30,6 +31,7 @@ import {
 /* TODO:
 - 24kHz problem of AirPods (BNR)
 - handle cancel of password/captcha modals - should leave the meeting or add an option to re-open the modals?
+- remote screen share (different video layout)
 - participants list
 - chat
 - raise/lower hand using DTMF (configurable in settings) if meeting is not Webex
@@ -51,6 +53,7 @@ export const MeetingProvider = ({
   user,
   webexConfig,
   mediaDevices,
+  settings,
   setAudioDeviceInput,
   setVideoDeviceInput,
   setAudioNoiseRemoval,
@@ -61,7 +64,15 @@ export const MeetingProvider = ({
 }) => {
   const [webexClient, setWebexClient] = useState(null);
   const [meeting, setMeeting] = useState(null);
+  const meetingRef = useRef(meeting);
   const [addMediaOnceReady, setAddMediaOnceReady] = useState(false);
+
+  /**
+   * make sure we have the latest meeting object in the ref - used by createVideoPane()
+   */
+  useEffect(() => {
+    meetingRef.current = meeting;
+  }, [meeting]);
 
   /**
    * context reducer and a couple of helper functions
@@ -88,6 +99,10 @@ export const MeetingProvider = ({
         return { ...state, isVideoMuted: action.isVideoMuted };
       case actionTypes.SET_UNMUTE_ALLOWED:
         return { ...state, isUnmuteAllowed: action.isUnmuteAllowed };
+      case actionTypes.SET_REMOTE_SHARE_ACTIVE:
+        return { ...state, isRemoteShareActive: action.isRemoteShareActive };
+      case actionTypes.SET_IS_MULTISTREAM:
+        return { ...state, isMultistream: action.isMultistream };
       case actionTypes.SET_MEETING_STATUS:
         return { ...state, meetingStatus: action.status };
       case actionTypes.SET_LOCAL_MEDIA:
@@ -100,6 +115,48 @@ export const MeetingProvider = ({
           ...state,
           remoteMedia: { ...state.remoteMedia, ...action.remoteMedia },
         };
+      case actionTypes.SET_MULTISTREAM_VIDEO:
+        const newMultistreamVideo = {
+          ...(state.multistreamVideo ? state.multistreamVideo : {}),
+          ...action.multistreamVideo,
+        };
+        return {
+          ...state,
+          multistreamVideo: newMultistreamVideo,
+        };
+      case actionTypes.SET_MULTISTREAM_VIDEO_GROUP:
+        return {
+          ...state,
+          multistreamVideo: {
+            ...(state.multistreamVideo ? state.multistreamVideo : {}),
+            [action.groupId]: action.videoPanes,
+          },
+        };
+      case actionTypes.SET_MULTISTREAM_VIDEO_PANE:
+        const newPane = {
+          ...(state.multistreamVideo
+            ? state.multistreamVideo[action.groupId][action.videoPane.paneId]
+            : {}),
+          ...action.videoPane,
+        };
+        const xPane = { [newPane.paneId]: newPane };
+        const newGrp = {
+          ...(state.multistreamVideo
+            ? state.multistreamVideo[action.groupId]
+            : {}),
+          ...xPane,
+        };
+        return {
+          ...state,
+          multistreamVideo: {
+            ...(state.multistreamVideo ? state.multistreamVideo : {}),
+            [action.groupId]: newGrp,
+          },
+        };
+      case actionTypes.CLEAR_MULTISTREAM_VIDEO:
+        return { ...state, multistreamVideo: null };
+      case actionTypes.SET_ACTIVE_SPEAKERS:
+        return { ...state, activeSpeakers: action.activeSpeakers };
       case actionTypes.SET_OVERLAY:
         return { ...state, overlay: { ...state.overlay, ...action.overlay } };
       case actionTypes.SET_ALERT_LEAVE_MEETING:
@@ -129,6 +186,11 @@ export const MeetingProvider = ({
         };
       case actionTypes.GET_MEDIA_DEVICES_FAILED:
         return { ...state, localMedia: { ...state.localMedia, available: {} } };
+      case actionTypes.SET_VIEW_PORT:
+        return {
+          ...state,
+          viewPort: { ...state.viewPort, ...action.viewPort },
+        };
       default:
         return state;
     }
@@ -154,6 +216,17 @@ export const MeetingProvider = ({
 
   const setIsUnmuteAllowed = (isUnmuteAllowed) => {
     dispatch({ type: actionTypes.SET_UNMUTE_ALLOWED, isUnmuteAllowed });
+  };
+
+  const setIsMultistream = (isMultistream) => {
+    dispatch({ type: actionTypes.SET_IS_MULTISTREAM, isMultistream });
+  };
+
+  const setRemoteShareActive = (isRemoteShareActive) => {
+    dispatch({
+      type: actionTypes.SET_REMOTE_SHARE_ACTIVE,
+      isRemoteShareActive,
+    });
   };
 
   const setAlertLeaveMeeting = (alertLeaveMeeting) => {
@@ -191,8 +264,46 @@ export const MeetingProvider = ({
     dispatch({ type: actionTypes.SET_REMOTE_MEDIA, remoteMedia });
   };
 
+  //eslint-disable-next-line no-unused-vars
+  const setMultistreamVideo = (multistreamVideo) => {
+    dispatch({ type: actionTypes.SET_MULTISTREAM_VIDEO, multistreamVideo });
+  };
+
+  const setMultistreamVideoGroup = (groupId, videoPanes) => {
+    dispatch({
+      type: actionTypes.SET_MULTISTREAM_VIDEO_GROUP,
+      groupId,
+      videoPanes,
+    });
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  const setMultistreamVideoPane = (videoPane) => {
+    for (const [groupId, group] of Object.entries(state.multistreamVideo)) {
+      if (group[videoPane.paneId]) {
+        dispatch({
+          type: actionTypes.SET_MULTISTREAM_VIDEO_PANE,
+          groupId,
+          videoPane,
+        });
+      }
+    }
+  };
+
+  const clearMultistreamVideo = () => {
+    dispatch({ type: actionTypes.CLEAR_MULTISTREAM_VIDEO });
+  };
+
+  const setActiveSpeakers = (activeSpeakers) => {
+    dispatch({ type: actionTypes.SET_ACTIVE_SPEAKERS, activeSpeakers });
+  };
+
   const setControlPanel = (controlPanel) => {
     dispatch({ type: actionTypes.SET_CONTROL_PANEL, controlPanel });
+  };
+
+  const setViewPort = (viewPort) => {
+    dispatch({ type: actionTypes.SET_VIEW_PORT, viewPort });
   };
 
   /**
@@ -347,7 +458,7 @@ export const MeetingProvider = ({
       setMeetingStatus(MEETING_STATUSES.JOINING);
 
       const joinOptions = {
-        enableMultistream: false, // Multistream is an experimental feature
+        enableMultistream: settings.multistream, // Multistream is an experimental feature
         moderator: false,
         breakoutsSupported: false, // Enable breakout rooms in the meeting
         receiveTranscription: false,
@@ -359,6 +470,10 @@ export const MeetingProvider = ({
         .join(joinOptions)
         .then(() => {
           console.log("Join meeting request complete");
+          if (meeting.isMultistream) {
+            console.log("Multistream is enabled");
+          }
+          setIsMultistream(meeting.isMultistream);
         })
         .catch((error) => {
           /*          if (error.name === "PasswordError") {
@@ -500,7 +615,22 @@ export const MeetingProvider = ({
         });
       }
     }
-  }, [state.localMedia.video]); //eslint-disable-line react-hooks/exhaustive-deps
+    if (state.isMultistream && state.localMedia.video) {
+      console.log("Adding selfview to multistream video panels");
+      const selfVideoPane = createVideoPane(
+        state.localMedia.video,
+        state.localMedia.video.outputStream,
+        state.localMedia.video.outputStream.id,
+        "live",
+        meeting ? meeting.members.selfId : "self",
+        "self",
+        "initialization"
+      );
+      setMultistreamVideoGroup("self", {
+        [state.localMedia.video.id]: selfVideoPane,
+      });
+    }
+  }, [state.localMedia.video, state.isMultistream]); //eslint-disable-line react-hooks/exhaustive-deps
 
   // act upon audio stream change
   useEffect(() => {
@@ -554,14 +684,68 @@ export const MeetingProvider = ({
     }
   }, [state.localMedia.share.audio]); //eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    function updateSize() {
+      // Get the viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Consider any fixed elements on the page
+      const headerHeight = document.querySelector("header")?.offsetHeight || 0;
+      const footerHeight = document.querySelector("footer")?.offsetHeight || 0;
+      const sidebarWidth = document.querySelector("aside")?.offsetWidth || 0;
+
+      // Calculate the free area
+      const freeWidth = viewportWidth - sidebarWidth;
+      const freeHeight = viewportHeight - (headerHeight + footerHeight);
+
+      console.log(`Viewport size: ${freeWidth} x ${freeHeight}`);
+      setViewPort({
+        screen: {
+          width: freeWidth,
+          height: freeHeight,
+        },
+      });
+    }
+
+    // Update size initially and on every window resize
+    updateSize();
+    window.addEventListener("resize", updateSize);
+
+    // Clean up the event listener when the component unmounts
+    return () => window.removeEventListener("resize", updateSize);
+  }, []); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (state.viewPort.screen.width > 0 && state.viewPort.screen.height > 0) {
+      const videoFactor = 0.25;
+      const newViewPort = {
+        video: {
+          width: state.viewPort.screen.width,
+          height: state.isRemoteShareActive
+            ? Math.floor(state.viewPort.screen.height * videoFactor)
+            : state.viewPort.screen.height,
+        },
+        share: {
+          width: state.isRemoteShareActive ? state.viewPort.screen.width : 0,
+          height: state.isRemoteShareActive
+            ? Math.floor(state.viewPort.screen.height * (1 - videoFactor))
+            : 0,
+        },
+      };
+      console.log(`New viewport size: ${JSON.stringify(newViewPort)}`);
+      setViewPort(newViewPort);
+    }
+  }, [state.isRemoteShareActive, state.viewPort.screen]); //eslint-disable-line react-hooks/exhaustive-deps
+
   // meeting state update
   const meetingStatusHandler = (event, payload) => {
     // the payload format is inconsistent, sometimes it is "payload.payload", sometimes just "payload"
     // also the payload is not always an object and JSON.stringify() can fail
     const pload = payload ? payload.payload || payload : {};
     try {
-      const ploadStr = JSON.stringify(pload);
-      console.log(`Meeting event: ${event}, payload: ${ploadStr}`);
+      const ploadString = JSON.stringify(pload);
+      console.log(`Meeting event: ${event}, payload: ${ploadString}`);
     } catch (error) {
       console.log(`Error stringifying payload: ${error}`);
       console.log(`Meeting event: ${event}`);
@@ -577,7 +761,7 @@ export const MeetingProvider = ({
             setRemoteMedia({ audio: pload });
             break;
           case "remoteShare":
-            // meetingStreamsRemoteShare.srcObject = media.stream;
+            setRemoteMedia({ share: pload });
             break;
           default:
             console.log(`Unknown media type: ${pload.type}`);
@@ -591,6 +775,7 @@ export const MeetingProvider = ({
           case "remoteVideo":
             stopCameraStream();
             setRemoteMedia({ video: null });
+            clearMultistreamVideo();
             stopCameraStream();
             break;
           case "remoteAudio":
@@ -606,19 +791,126 @@ export const MeetingProvider = ({
             break;
         }
         break;
-
+      case "meeting:startedSharingRemote":
+        console.log(`Remote sharing started`);
+        setRemoteShareActive(true);
+        break;
+      case "meeting:stoppedSharingRemote":
+        console.log(`Remote sharing stopped`);
+        setRemoteShareActive(false);
+        break;
+      case "meeting:stoppedSharingLocal":
+        console.log(`Local sharing stopped`);
+        break;
+      // multistream events
+      case "media:remoteVideo:layoutChanged": // first event in multistream
+        const {
+          layoutId,
+          activeSpeakerVideoPanes,
+          memberVideoPanes,
+          screenShareVideo,
+        } = pload;
+        console.warn(
+          `Remote video layout changed:\nlayoutId: ${layoutId}\nmemberVideoPanes: ${JSON.stringify(
+            memberVideoPanes
+          )}\nscreenShareVideo: ${JSON.stringify(screenShareVideo)}`
+        );
+        for (const [groupId, group] of Object.entries(
+          activeSpeakerVideoPanes
+        )) {
+          // console.log(`Group ${groupId}:`);
+          const groupMediaStreams = {};
+          group.getRemoteMedia().forEach((remoteMedia, index) => {
+            // console.warn(`  index ${index}: ${JSON.stringify(remoteMedia)}`);
+            const newVideoPane = createVideoPane(
+              remoteMedia,
+              remoteMedia.stream,
+              remoteMedia.id,
+              remoteMedia.sourceState,
+              remoteMedia.memberId,
+              `${groupId}.${index} ${remoteMedia.id}`,
+              "initialization"
+            );
+            remoteMedia.on("sourceUpdate", (data) => {
+              const updatedVideoPane = createVideoPane(
+                remoteMedia,
+                remoteMedia.stream,
+                remoteMedia.id,
+                data.state,
+                data.memberId,
+                `${groupId}.${index} ${remoteMedia.id}`,
+                "update"
+              );
+              setMultistreamVideoGroup(groupId, {
+                [remoteMedia.id]: updatedVideoPane,
+              });
+            });
+            groupMediaStreams[remoteMedia.id] = newVideoPane;
+          });
+          setMultistreamVideoGroup(groupId, groupMediaStreams);
+        }
+        if (screenShareVideo) {
+          const newSharePane = createVideoPane(
+            screenShareVideo,
+            screenShareVideo.stream,
+            screenShareVideo.id,
+            screenShareVideo.sourceState,
+            screenShareVideo.memberId,
+            `screenShare ${screenShareVideo.id}`,
+            "initialization"
+          );
+          screenShareVideo.on("sourceUpdate", (data) => {
+            const updatedSharePane = createVideoPane(
+              screenShareVideo,
+              screenShareVideo.stream,
+              screenShareVideo.id,
+              data.state,
+              data.memberId,
+              `screenShare ${screenShareVideo.id}`,
+              "update"
+            );
+            setMultistreamVideoGroup("share", {
+              [screenShareVideo.id]: updatedSharePane,
+            });
+          });
+          setMultistreamVideoGroup("share", {
+            [screenShareVideo.id]: newSharePane,
+          });
+        }
+        break;
+      case "media:remoteAudio:created":
+        console.log(`Remote audio stream created: ${JSON.stringify(pload)}`);
+        break;
+      case "media:remoteScreenShareAudio:created":
+        console.log(
+          `Remote screen share audio stream created: ${JSON.stringify(pload)}`
+        );
+        break;
+      case "media:remoteVideoSourceCountChanged":
+        console.log(
+          `Remote video source count changed ${JSON.stringify(pload)}`
+        );
+        break;
+      case "media:remoteAudioSourceCountChanged":
+        console.log(
+          `Remote audio source count changed ${JSON.stringify(pload)}`
+        );
+        break;
+      case "media:activeSpeakerChanged":
+        console.log(`Active speaker changed: ${JSON.stringify(pload)}`);
+        setActiveSpeakers(pload.memberIds);
+        break;
+      // end multistream events
       case "meeting:stateChange":
-        console.log(`Meeting state changed`); // ${JSON.stringify(state)}`);
+        console.log(`Meeting state changed to: ${pload.currentState}`); // ${JSON.stringify(state)}`);
         switch (pload.currentState) {
           case "ACTIVE":
             setMeetingStatus(MEETING_STATUSES.ACTIVE);
             break;
           case "INACTIVE":
-            console.log("Meeting ended");
             setMeetingStatus(MEETING_STATUSES.INACTIVE);
             break;
           default:
-            console.log("Meeting state changed to: " + pload.currentState);
         }
         break;
       case "meeting:self:lobbyWaiting":
@@ -655,9 +947,7 @@ export const MeetingProvider = ({
         break;
       case "meeting:streamPublishStateChanged":
         console.log(
-          `Stream ${pload.stream.label} ${
-            pload.isPublished ? "" : "un"
-          }published`
+          `Stream ${pload} ${pload.isPublished ? "" : "un"}published`
         );
         break;
       case "DESTROY_MEETING":
@@ -670,6 +960,100 @@ export const MeetingProvider = ({
     }
   };
 
+  useEffect(() => {
+    console.log(`Viewport changed: ${JSON.stringify(state.viewPort)}`);
+  }, [state.viewPort]);
+
+  /**
+   * Multistream requires a layout request from the client side.
+   * This is specifically needed when there is a remote sharing: the default layout (typically "AllEqual")
+   * doesn't include the remote share stream. So the "ScreenShareView" needs to be requested. Then the new event
+   * of "media:remoteVideo:layoutChanged" is triggered in which the "screenShareVideo" contains the remote
+   * screen share stream.
+   *
+   * In other words: the remote screen share is processed this way:
+   * 1. "meeting:startedSharingRemote" event arrives, the "state.isRemoteShareActive" is set to true
+   * 2. the layout "ScreenShareView" is requested to include the remote share stream
+   * 3. "media:remoteVideo:layoutChanged" event arrives and the media streams ("share" and "thumbnails") are added
+   * to the available video panes
+   *
+   * Note that in remote sharing mode, the participants' video streams may not be in the "main" group, instead they are
+   * in the "thumbnails" group in lower resolution to conserve bandwidth.
+   */
+  useEffect(() => {
+    if (meeting?.isMultistream) {
+      const layout = meeting.remoteMediaManager?.getLayoutId();
+      if (state.isRemoteShareActive) {
+        console.log(
+          `Current remote sharing layout: ${layout}, requesting screen share layout`
+        );
+        meeting.remoteMediaManager?.setLayout("ScreenShareView");
+      } else {
+        console.log(
+          `Current remote sharing layout: ${layout}, requesting all equal layout`
+        );
+        meeting.remoteMediaManager?.setLayout("AllEqual");
+      }
+    }
+  }, [state.isRemoteShareActive, meeting?.remoteMediaManager]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  const createVideoPane = (
+    media,
+    stream,
+    paneId,
+    sourceState,
+    memberId,
+    title,
+    debugString
+  ) => {
+    // eslint-disable-next-line no-param-reassign
+    const videoPane = {
+      media: media,
+      stream: stream,
+      paneId: paneId,
+      width: 0,
+      height: 0,
+    };
+    videoPane.debugText = title;
+    videoPane.sourceState = sourceState;
+
+    if (sourceState === "no source") {
+      // eslint-disable-next-line no-param-reassign
+      videoPane.isActive = false;
+      videoPane.isLive = false;
+      videoPane.name = "";
+      videoPane.memberId = undefined;
+      console.log(
+        `createVideoPane() :: ${debugString} ${sourceState} ${title}`
+      );
+    } else {
+      // eslint-disable-next-line no-param-reassign
+      videoPane.isActive = true;
+
+      // videoPane.name = meeting?.members.membersCollection.get(memberId).name; //somehow this is "null"
+      try {
+        videoPane.name =
+          meetingRef.current.members.membersCollection.get(memberId).name;
+      } catch (error) {
+        videoPane.name = title;
+      }
+
+      // if (memberId && currentActiveSpeakersMemberIds.includes(memberId)) {
+      //   videoPane.nameLabelEl.classList.add('speaking');
+      // }
+      // eslint-disable-next-line no-param-reassign
+      videoPane.memberId = memberId;
+
+      videoPane.isLive = sourceState === "live";
+
+      console.warn(
+        `createVideoPane() :: ${debugString} "${sourceState}" "${videoPane.name}" ${title} `
+      );
+    }
+
+    return videoPane;
+  };
+
   // meeting members update
   // the payload can contain 3 objects: added, delta, full
   const memberStatusHandler = (event, payload) => {
@@ -677,10 +1061,10 @@ export const MeetingProvider = ({
     // also the payload is not always an object
     const pload = payload ? payload.payload || payload : {};
     try {
-      const ploadStr = JSON.stringify(pload);
-      console.log(`Meeting event: ${event}, payload: ${ploadStr}`);
+      const ploadString = JSON.stringify(pload);
+      console.log(`Meeting event: ${event}, payload: ${ploadString}`);
     } catch (error) {
-      console.error(`Error stringifying payload: ${error}`);
+      console.log(`Error stringifying payload: ${error}`);
       console.log(`Meeting event: ${event}`);
     }
     // eslint-disable-next-line default-case
@@ -766,7 +1150,7 @@ export const MeetingProvider = ({
       console.log("Leaving the meeting...");
       await meeting.leave();
       console.log("Meeting left");
-      // unregisterMeetings();
+      unregisterMeetings();
     } catch (error) {
       console.error(`Error leaving meeting: ${error}`);
     }
@@ -1095,7 +1479,7 @@ export const MeetingProvider = ({
         setVirtualBackgroundVideo(videoUrl);
       }
     } catch (error) {
-      console.log("Error applying background effect!", error);
+      console.error("Error applying background effect!", error);
     }
   };
 
@@ -1114,7 +1498,7 @@ export const MeetingProvider = ({
         },
       });
     } catch (error) {
-      console.log("Error starting screen share: ", error);
+      console.error("Error starting screen share: ", error);
     }
   }
 
@@ -1158,7 +1542,7 @@ export const MeetingProvider = ({
 
       console.log("Unpublished share stream!");
     } catch (error) {
-      console.log("Error unpublishing share stream: ", error);
+      console.error("Error unpublishing share stream: ", error);
     }
   }
 
@@ -1244,7 +1628,8 @@ const initialState = {
   isAudioMuted: false,
   isVideoMuted: false,
   isUnmuteAllowed: true,
-  isScreenShare: false,
+  isRemoteShareActive: false,
+  isMultistream: false,
   meetingStatus: MEETING_STATUSES.INACTIVE,
   alertLeaveMeeting: false,
   alertEnterPassword: false,
@@ -1284,10 +1669,27 @@ const initialState = {
     video: null,
     share: null,
   },
+  // groupId with members, e.g. {"main": {member1Id: member1Obj, member2Id: member2Obj}}
+  multistreamVideo: null,
   controlPanel: {
     name: "none",
     component: <></>,
   },
+  viewPort: {
+    screen: {
+      width: 0,
+      height: 0,
+    },
+    video: {
+      width: 0,
+      height: 0,
+    },
+    share: {
+      width: 0,
+      height: 0,
+    },
+  },
+  activeSpeakers: [],
 };
 
 export const useMeeting = () => useContext(MeetingContext);
@@ -1299,6 +1701,7 @@ MeetingProvider.propTypes = {
   user: propTypes.object.isRequired,
   webexConfig: propTypes.object.isRequired,
   mediaDevices: propTypes.object.isRequired,
+  settings: propTypes.object.isRequired,
   setAudioDeviceInput: propTypes.func.isRequired,
   setVideoDeviceInput: propTypes.func.isRequired,
   setAudioNoiseRemoval: propTypes.func.isRequired,
@@ -1312,6 +1715,7 @@ const mapStateToProps = (state) => {
     user: state.user,
     webexConfig: state.webex,
     mediaDevices: state.mediaDevices,
+    settings: state.settings,
   };
 };
 

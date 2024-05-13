@@ -14,11 +14,16 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
-import { Videocam, Mic } from "@mui/icons-material";
+import {
+  SettingsOutlined,
+  VideocamOutlined,
+  MicOutlined,
+} from "@mui/icons-material";
 import { Grid, Stack } from "@mui/joy"; //eslint-disable-line no-unused-vars
 import AudioSettings from "./AudioSettings";
 import VideoSettings from "./VideoSettings";
 import { useMeetingAction } from "../meetingcontext/MeetingContext";
+import GeneralSettings from "./GeneralSettings";
 
 const SettingsDialog = ({ onClose, open }) => {
   const [content, setContent] = useState("audio");
@@ -69,7 +74,7 @@ const SettingsDialog = ({ onClose, open }) => {
                     }}
                   >
                     <ListItemIcon>
-                      <Mic />
+                      <MicOutlined />
                     </ListItemIcon>
                     <ListItemText primary="Audio" />
                   </ListItemButton>
@@ -81,9 +86,21 @@ const SettingsDialog = ({ onClose, open }) => {
                     }}
                   >
                     <ListItemIcon>
-                      <Videocam />
+                      <VideocamOutlined />
                     </ListItemIcon>
                     <ListItemText primary="Video" />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem key="general" disablePadding>
+                  <ListItemButton
+                    onClick={() => {
+                      setContent("general");
+                    }}
+                  >
+                    <ListItemIcon>
+                      <SettingsOutlined />
+                    </ListItemIcon>
+                    <ListItemText primary="Obecné" />
                   </ListItemButton>
                 </ListItem>
               </List>
@@ -105,6 +122,7 @@ const SettingsDialog = ({ onClose, open }) => {
           <Grid xs={10}>
             <AudioSettings visible={content === "audio"} />
             <VideoSettings visible={content === "video"} />
+            <GeneralSettings visible={content === "general"} />
           </Grid>
         </Grid>
         {/* {content}

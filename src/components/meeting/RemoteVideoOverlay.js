@@ -18,28 +18,27 @@ const RemoteVideoOverlay = () => {
 
   const theme = extendTheme();
 
-  if (!contextState.overlay.hidden) {
-    return (
-      <Div theme={theme}>
-        <Sheet color="neutral" variant="soft" sx={{ p: 4, zIndex: 10 }}>
-          {contextState.overlay.canClose && (
-            <ModalClose
-              onClick={() => {
-                dispatch({
-                  type: actionTypes.SET_OVERLAY,
-                  overlay: { hidden: true, message: "" },
-                });
-              }}
-            />
-          )}
-          {contextState.overlay.message && (
-            <div>{contextState.overlay.message}</div>
-          )}
-        </Sheet>
-      </Div>
-    );
-  }
-  return null;
+  if (contextState.overlay.hidden) return null;
+
+  return (
+    <Div theme={theme} sx={{ width: 1 }}>
+      <Sheet color="neutral" variant="soft" sx={{ p: 4, zIndex: 10 }}>
+        {contextState.overlay.canClose && (
+          <ModalClose
+            onClick={() => {
+              dispatch({
+                type: actionTypes.SET_OVERLAY,
+                overlay: { hidden: true, message: "" },
+              });
+            }}
+          />
+        )}
+        {contextState.overlay.message && (
+          <div>{contextState.overlay.message}</div>
+        )}
+      </Sheet>
+    </Div>
+  );
 };
 
 export default RemoteVideoOverlay;

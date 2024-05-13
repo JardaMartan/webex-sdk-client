@@ -158,7 +158,7 @@ const AppHeader = ({ logoutUser, user, ...props }) => {
   );
 
   return (
-    <AppBar position="static">
+    <AppBar position="static" id="header">
       <Toolbar>
         <Typography
           variant="h5"

@@ -69,3 +69,28 @@
   border: 2px solid blue;
   z-index: 8;
 }
+
+#multistream-panel {
+  padding: 0px;
+}
+
+.grid-item {
+  width: 20%;
+  /* margin-bottom: 10px; */
+}
+/* 2 columns */
+.grid-item--width2 {
+  width: 40%;
+}
+
+@media (max-width: 800px) {
+  .grid-item {
+    width: 50%; /* 2 columns on smaller screens */
+  }
+}
+
+@media (max-width: 500px) {
+  .grid-item {
+    width: 100%; /* 1 column on smallest screens */
+  }
+}

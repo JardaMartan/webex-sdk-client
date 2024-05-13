@@ -2,77 +2,27 @@ import React, { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import Box from "@mui/joy/Box";
-import RemoteVideoOverlay from "./RemoteVideoOverlay";
-import Paper from "@mui/material/Paper";
-import Container from "@mui/material/Container";
 import { useMeeting } from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
 import ModalLeaveMeeting from "./ModalLeaveMeeting";
 import ModalDtmf from "./ModalDtmf";
 import ModalMeetingPassword from "./ModalMeetingPassword";
 import ModalMeetingCaptcha from "./ModalMeetingCaptcha";
+import MeetingVideoViewNormal from "./MeetingVideoViewNormal";
+import MeetingVideoViewMultistream from "./MeetingVideoViewMultistream";
 
 const MeetingView = ({ mediaDevices }) => {
-  const remoteVideoRef = useRef("remoteVideo");
-  const localVideoRef = useRef("localVideo");
   const remoteAudioRef = useRef("remoteAudio");
+  const multistreamRemoteAudioRef0 = useRef("multistreamRemoteAudio0");
+  const multistreamRemoteAudioRef1 = useRef("multistreamRemoteAudio1");
+  const multistreamRemoteAudioRef2 = useRef("multistreamRemoteAudio2");
+  const multistreamRemoteShareAudioRef = useRef("multistreamRemoteShareAudio");
   const contextState = useMeeting();
 
   // console.log("Meeting status: " + contextState.meetingStatus);
   // console.log(
   //   `Media streams. Microphone: ${contextState.localMedia.audio}, Camera: ${contextState.localMedia.video}, Remote audio: ${contextState.remoteMedia.audio}, Remote video: ${contextState.remoteMedia.video}`
   // );
-
-  /**
-   * Set local video stream to the local video (selfview) element
-   */
-  useEffect(() => {
-    try {
-      if (
-        [
-          MEETING_STATUSES.ACTIVE,
-          MEETING_STATUSES.IN_LOBBY,
-          MEETING_STATUSES.JOINED,
-          MEETING_STATUSES.IN_MEETING,
-        ].includes(contextState.meetingStatus) &&
-        contextState.localMedia.video
-      ) {
-        if (localVideoRef.current.srcObject == null) {
-          console.log("Setting local video for selfview");
-          localVideoRef.current.srcObject =
-            contextState.localMedia.video.outputStream;
-        }
-      } else if (localVideoRef.current.srcObject != null) {
-        console.log("Unsetting local video for selfview");
-        localVideoRef.current.srcObject = null;
-      }
-    } catch (error) {
-      console.log(`Error setting local video: ${error}`);
-    }
-  }, [contextState.localMedia.video, contextState.meetingStatus]);
-
-  /**
-   * Set remote video stream to the remote video element
-   */
-  useEffect(() => {
-    try {
-      if (
-        MEETING_STATUSES.IN_MEETING === contextState.meetingStatus &&
-        contextState.remoteMedia.video
-      ) {
-        if (remoteVideoRef.current.srcObject == null) {
-          console.log("Setting remote video");
-          remoteVideoRef.current.srcObject =
-            contextState.remoteMedia.video.stream;
-        }
-      } else if (remoteVideoRef.current.srcObject != null) {
-        console.log("Unsetting remote video");
-        remoteVideoRef.current.srcObject = null;
-      }
-    } catch (error) {
-      console.log(`Error setting remote video: ${error}`);
-    }
-  }, [contextState.remoteMedia.video, contextState.meetingStatus]);
 
   /**
    * Set remote audio stream to the remote audio element
@@ -107,120 +57,59 @@ const MeetingView = ({ mediaDevices }) => {
         mediaDevices.selected.audio_output
       );
       remoteAudioRef.current.setSinkId(mediaDevices.selected.audio_output);
+      multistreamRemoteAudioRef0.current.setSinkId(
+        mediaDevices.selected.audio_output
+      );
+      multistreamRemoteAudioRef1.current.setSinkId(
+        mediaDevices.selected.audio_output
+      );
+      multistreamRemoteAudioRef2.current.setSinkId(
+        mediaDevices.selected.audio_output
+      );
+      multistreamRemoteShareAudioRef.current.setSinkId(
+        mediaDevices.selected.audio_output
+      );
     }
   }, [mediaDevices.selected]); //eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Box
-      my={2}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      sx={{
-        flexGrow: 1,
-        display: "grid",
-        gridTemplateColumns: "repeat(1, minmax(80px, 1fr))",
-        gap: 1,
-      }}
-    >
+    <div>
       <ModalLeaveMeeting />
       <ModalDtmf />
       <ModalMeetingPassword />
       <ModalMeetingCaptcha />
       {/* <MeetingIdForm /> */}
-      <Box
-        visibility={
-          contextState.meetingStatus !== MEETING_STATUSES.INACTIVE &&
-          contextState.meetingStatus !== MEETING_STATUSES.JOINING
-            ? "visible"
-            : "hidden"
-        }
-        id="meetingStreams"
-        width={1280}
-        height={720}
-        // my={2}
-        display="flex"
-        alignItems="center"
-        // gap={4}
-        sx={{
-          display: "grid",
-          // gridTemplateColumns: "repeat(1, minmax(80px, 1fr))",
-          // gap: 1,
-          mx: "auto",
-          position: "relative",
-        }}
-      >
-        <Paper
-          display="flex"
-          sx={{
-            width: 1,
-            height: 1,
-            position: "absolute",
-            overflow: "hidden",
-            borderRadius: 2,
-            justifyContent: "flex-start",
-          }}
-        >
-          <Container
-            disableGutters={true}
-            maxWidth={false}
-            sx={{
-              width: 1,
-              height: 1,
-            }}
-          >
-            <video
-              width="100%"
-              height="100%"
-              id="remoteVideo"
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-            />
-          </Container>
-        </Paper>
-        <RemoteVideoOverlay className="remote-video-overlay" />
-        <Paper
-          elevation={6}
-          display="flex"
-          sx={{
-            width: 240,
-            height: 135,
-            bottom: 10,
-            right: 10,
-            zindex: 5,
-            overflow: "hidden",
-            position: "absolute",
-            justifyContent: "flex-end",
-            borderRadius: 2,
-          }}
-        >
-          <Container
-            disableGutters={true}
-            maxWidth={false}
-            sx={{
-              width: 1,
-              height: 1,
-            }}
-          >
-            <video
-              id="localVideo"
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              width="100%"
-              height="100%"
-              zindex={4}
-            />
-          </Container>
-        </Paper>
-      </Box>
-      <Box visibility="hidden">
+      {contextState.isMultistream ? (
+        <MeetingVideoViewMultistream />
+      ) : (
+        <MeetingVideoViewNormal />
+      )}
+      <Box visibility="hidden" height={0}>
         Remote Audio
-        <audio id="remote-audio" controls autoPlay ref={remoteAudioRef} />
+        <audio id="remoteAudio" autoPlay ref={remoteAudioRef} />
+        <audio
+          id="multistreamRemoteAudio0"
+          ref={multistreamRemoteAudioRef0}
+          autoPlay
+        ></audio>
+        <audio
+          id="multistreamRemoteAudio1"
+          ref={multistreamRemoteAudioRef1}
+          autoPlay
+        ></audio>
+        <audio
+          id="multistreamRemoteAudio2"
+          ref={multistreamRemoteAudioRef2}
+          autoPlay
+        ></audio>
+        <audio
+          id="multistreamRemoteShareAudio"
+          ref={multistreamRemoteShareAudioRef}
+          autoPlay
+        ></audio>
       </Box>
       {/* <MeetingControls /> */}
-    </Box>
+    </div>
   );
 };
 
