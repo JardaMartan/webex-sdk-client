@@ -15,9 +15,9 @@ import {
   Button,
 } from "@mui/material";
 import {
-  SettingsOutlined,
   VideocamOutlined,
   MicOutlined,
+  TuneOutlined,
 } from "@mui/icons-material";
 import { Grid, Stack } from "@mui/joy"; //eslint-disable-line no-unused-vars
 import AudioSettings from "./AudioSettings";
@@ -98,7 +98,7 @@ const SettingsDialog = ({ onClose, open }) => {
                     }}
                   >
                     <ListItemIcon>
-                      <SettingsOutlined />
+                      <TuneOutlined />
                     </ListItemIcon>
                     <ListItemText primary="Obecné" />
                   </ListItemButton>
