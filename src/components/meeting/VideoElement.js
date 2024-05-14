@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Container, Paper } from "@mui/material";
-import { styled } from "@mui/system";
 import { useMeeting } from "../meetingcontext/MeetingContext";
-import { MicOffOutlined, MicOutlined } from "@mui/icons-material";
+import {
+  MicOffOutlined,
+  MicOutlined,
+  PresentToAllOutlined,
+} from "@mui/icons-material";
 import { red, green } from "@mui/material/colors";
 
 const VideoElement = ({
@@ -14,23 +17,22 @@ const VideoElement = ({
   // view settings
   const marginSize = 0;
   const borderSize = 2;
-  const borderRadius = 1;
+  const borderRadius = 1.6;
+  const nameBorderRadius = 1;
+  const shadowSize = 10;
   const speakingColor = green["A200"];
   const mutedColor = red["A200"];
   const titleBackground = `rgba(0, 0, 0, 0.6)`;
   const fontSize = 12;
+  const padding = 6;
 
   const videoElement = useRef(videoPane.paneId);
   const [videoAspectRatio, setVideoAspectRatio] = useState(1);
   const videoBoxMaxSize = maxHeight;
   const contextState = useMeeting();
-  const Div = styled("div")(({ theme }) => ({
-    // backgroundColor: `rgba(${theme.vars.palette.primary.mainChannel} / 0.2)`,
-    // backgroundColor: `rgba(0, 0, 0, 0.6)`,
-    backgroundColor: "transparent",
-  }));
   const [activeSpeaker, setActiveSpeaker] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [isContentSharing, setIsContentSharing] = useState(false);
 
   useEffect(() => {
     if (videoPane?.stream && videoElement) {
@@ -94,6 +96,7 @@ const VideoElement = ({
     try {
       const member = contextState.members[videoPane.memberId];
       setIsAudioMuted(member.isAudioMuted);
+      setIsContentSharing(member.isContentSharing);
     } catch (error) {
       console.log(`Error getting member for video pane ${videoPane.memberId}`);
     }
@@ -101,12 +104,12 @@ const VideoElement = ({
 
   return (
     <Box
-      className={
-        "grid-item" + (videoPane.height > 0) &&
-        videoPane.width / videoPane.height > 1
+      // className="grid-item"
+      className={`grid-item ${
+        videoPane.height > 0 && videoPane.width / videoPane.height > 1
           ? " grid-item--width2"
           : ""
-      }
+      }`}
       visibility={videoPane.height > 0 ? "visible" : "hidden"}
       id={`videobox-${videoPane.paneId}`}
       //   width={width}
@@ -129,8 +132,12 @@ const VideoElement = ({
       <Paper
         display="flex"
         sx={{
-          width: 1,
-          height: 1,
+          // width: 1,
+          // height: 1,
+          left: padding * videoAspectRatio,
+          right: padding * videoAspectRatio,
+          top: padding,
+          bottom: padding,
           position: "absolute",
           overflow: "hidden",
           borderRadius: borderRadius,
@@ -157,57 +164,60 @@ const VideoElement = ({
             playsInline
             title={videoPane.name}
           />
-          <Div sx={{ width: 1 }}>
-            <Box
-              color="white"
-              variant="soft"
-              className="video-name"
-              sx={{
-                // width: 1,
-                bottom: 3,
-                left: 3,
-                zindex: 5,
-                borderRadius: borderRadius,
-                fontSize: fontSize,
-                position: "absolute",
-                justifyContent: "flex-start",
-                backgroundColor: titleBackground,
-              }}
-            >
-              {activeSpeaker ? (
-                <MicOutlined
-                  sx={{ fontSize: fontSize, color: speakingColor }}
-                />
-              ) : (
-                ""
-              )}
-              {isAudioMuted ? (
-                <MicOffOutlined
-                  sx={{ fontSize: fontSize, color: mutedColor }}
-                />
-              ) : (
-                ""
-              )}
-              &nbsp;
-              {videoPane.name}
-            </Box>
-            <Box
-              sx={{
-                color: speakingColor, //"secondary.main",
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                position: "absolute",
-                justifyContent: "flex-start",
-                borderRadius: borderRadius,
-                border: activeSpeaker ? borderSize : "none",
-                zindex: activeSpeaker ? 10 : 0,
-              }}
-            ></Box>
-          </Div>
+          <Box
+            color="white"
+            variant="soft"
+            className="video-name"
+            sx={{
+              // width: 1,
+              bottom: 4,
+              left: 4,
+              zindex: 5,
+              borderRadius: nameBorderRadius,
+              fontSize: fontSize,
+              position: "absolute",
+              justifyContent: "flex-start",
+              backgroundColor: titleBackground,
+            }}
+          >
+            {activeSpeaker ? (
+              <MicOutlined sx={{ fontSize: fontSize, color: speakingColor }} />
+            ) : (
+              ""
+            )}
+            {isAudioMuted ? (
+              <MicOffOutlined sx={{ fontSize: fontSize, color: mutedColor }} />
+            ) : (
+              ""
+            )}
+            &nbsp;
+            {videoPane.name}
+            &nbsp;
+            {isContentSharing ? (
+              <PresentToAllOutlined
+                sx={{ fontSize: fontSize, color: "white" }}
+              />
+            ) : (
+              ""
+            )}
+          </Box>
         </Container>
       </Paper>
+      <Box
+        sx={{
+          color: speakingColor, //"secondary.main",
+          left: padding * videoAspectRatio,
+          right: padding * videoAspectRatio,
+          top: padding,
+          bottom: padding,
+          position: "absolute",
+          justifyContent: "flex-start",
+          borderRadius: borderRadius,
+          border: activeSpeaker && borderSize,
+          boxShadow: activeSpeaker && `0 0 ${shadowSize}px ${speakingColor}`,
+          zindex: 10, //activeSpeaker ? 10 : 0,
+        }}
+      ></Box>
     </Box>
   );
 };

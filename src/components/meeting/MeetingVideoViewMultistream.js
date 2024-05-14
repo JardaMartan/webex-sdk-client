@@ -33,7 +33,8 @@ const MeetingVideoViewMultistream = () => {
     } else {
       console.log("Initializing isotope");
       const iso = new Isotope(isoRef.current, {
-        // itemSelector: ".grid-item",
+        itemSelector: ".grid-item",
+        transitionDuration: 0,
         // percentPosition: true,
         // masonry: {
         //   columnWidth: 120,
@@ -148,7 +149,7 @@ const MeetingVideoViewMultistream = () => {
       <div
         id="multistreamPanel"
         position="absolute"
-        justifyContent="flex-start"
+        // justifyContent="flex-start"
         ref={isoRef}
         height={contextState.viewPort.video.height}
         width={contextState.viewPort.video.width}
