@@ -3,6 +3,7 @@ import { Box, Container, Paper } from "@mui/material";
 import { styled } from "@mui/system";
 import { useMeeting } from "../meetingcontext/MeetingContext";
 import { MicOffOutlined, MicOutlined } from "@mui/icons-material";
+import { red, green } from "@mui/material/colors";
 
 const VideoElement = ({
   videoPane,
@@ -10,12 +11,19 @@ const VideoElement = ({
   width = 1920,
   onAspectRatioChange,
 }) => {
+  // view settings
+  const marginSize = 0;
+  const borderSize = 2;
+  const borderRadius = 1;
+  const speakingColor = green["A200"];
+  const mutedColor = red["A200"];
+  const titleBackground = `rgba(0, 0, 0, 0.6)`;
+  const fontSize = 12;
+
   const videoElement = useRef(videoPane.paneId);
   const [videoAspectRatio, setVideoAspectRatio] = useState(1);
   const videoBoxMaxSize = maxHeight;
   const contextState = useMeeting();
-  const marginSize = 0;
-  const borderSize = 2;
   const Div = styled("div")(({ theme }) => ({
     // backgroundColor: `rgba(${theme.vars.palette.primary.mainChannel} / 0.2)`,
     // backgroundColor: `rgba(0, 0, 0, 0.6)`,
@@ -125,7 +133,7 @@ const VideoElement = ({
           height: 1,
           position: "absolute",
           overflow: "hidden",
-          borderRadius: 1,
+          borderRadius: borderRadius,
           justifyContent: "flex-start",
         }}
       >
@@ -159,20 +167,24 @@ const VideoElement = ({
                 bottom: 3,
                 left: 3,
                 zindex: 5,
-                borderRadius: 1,
-                fontSize: 12,
+                borderRadius: borderRadius,
+                fontSize: fontSize,
                 position: "absolute",
                 justifyContent: "flex-start",
-                backgroundColor: `rgba(0, 0, 0, 0.6)`,
+                backgroundColor: titleBackground,
               }}
             >
               {activeSpeaker ? (
-                <MicOutlined sx={{ fontSize: 12, color: "lightseagreen" }} />
+                <MicOutlined
+                  sx={{ fontSize: fontSize, color: speakingColor }}
+                />
               ) : (
                 ""
               )}
               {isAudioMuted ? (
-                <MicOffOutlined sx={{ fontSize: 12, color: "red" }} />
+                <MicOffOutlined
+                  sx={{ fontSize: fontSize, color: mutedColor }}
+                />
               ) : (
                 ""
               )}
@@ -181,14 +193,14 @@ const VideoElement = ({
             </Box>
             <Box
               sx={{
-                color: "secondary.main",
+                color: speakingColor, //"secondary.main",
                 left: 0,
                 right: 0,
                 top: 0,
                 bottom: 0,
                 position: "absolute",
                 justifyContent: "flex-start",
-                borderRadius: 2,
+                borderRadius: borderRadius,
                 border: activeSpeaker ? borderSize : "none",
                 zindex: activeSpeaker ? 10 : 0,
               }}
