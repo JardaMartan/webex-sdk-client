@@ -21,8 +21,12 @@ const MeetingVideoViewMultistream = () => {
    */
   useEffect(() => {
     console.warn("Multistream video updated: ", contextState.multistreamVideo);
-    rearrangeIsotope();
+    // rearrangeIsotope();
   }, [contextState.multistreamVideo]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    console.log("Children updated");
+  }, [isoRef.children]); //eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Setup the isotope layout or update it when the screen dimensions change.
@@ -35,10 +39,10 @@ const MeetingVideoViewMultistream = () => {
       const iso = new Isotope(isoRef.current, {
         itemSelector: ".grid-item",
         transitionDuration: 0,
-        // percentPosition: true,
-        // masonry: {
-        //   columnWidth: 120,
-        // },
+        percentPosition: true,
+        masonry: {
+          columnWidth: 20,
+        },
       });
       iso.on("arrangeComplete", (filteredItems) => {
         if (filteredItems.length === 0) {
@@ -156,48 +160,40 @@ const MeetingVideoViewMultistream = () => {
       >
         {/* Participant videos */}
         {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
-        contextState.multistreamVideo ? (
-          Object.values(
-            // the main video streams may not be active when remote sharing, thumbnails should be used instead
-            contextState.isRemoteShareActive
-              ? contextState.multistreamVideo?.thumbnails || [] // thumbnails may not be initialized at the meeting join time
-              : contextState.multistreamVideo?.main || []
-          ).map((videoPane, index) =>
-            videoPane?.isActive && videoPane?.isLive ? (
-              <VideoElement
-                key={index}
-                videoPane={videoPane}
-                maxHeight={videoHeight}
-                width={contextState.viewPort.video.width}
-                onAspectRatioChange={rearrangeIsotope}
-              />
-            ) : (
-              <></>
-            )
-          )
-        ) : (
-          <></>
-        )}
-        {/* Selfview */}
-        {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
-        contextState.multistreamVideo?.self ? (
-          Object.values(contextState.multistreamVideo.self).map(
-            (videoPane, index) =>
-              videoPane?.isLive ? (
+        contextState.multistreamVideo
+          ? Object.values(
+              // the main video streams may not be active when remote sharing, thumbnails should be used instead
+              contextState.isRemoteShareActive
+                ? contextState.multistreamVideo?.thumbnails || [] // thumbnails may not be initialized at the meeting join time
+                : contextState.multistreamVideo?.main || []
+            ).map((videoPane, index) =>
+              videoPane?.isActive && videoPane?.isLive ? (
                 <VideoElement
-                  key="self"
+                  key={videoPane.paneId}
                   videoPane={videoPane}
                   maxHeight={videoHeight}
                   width={contextState.viewPort.video.width}
                   onAspectRatioChange={rearrangeIsotope}
                 />
-              ) : (
-                <></>
-              )
-          )
-        ) : (
-          <></>
-        )}
+              ) : null
+            )
+          : null}
+        {/* Selfview */}
+        {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
+        contextState.multistreamVideo?.self
+          ? Object.values(contextState.multistreamVideo.self).map(
+              (videoPane, index) =>
+                videoPane?.isLive ? (
+                  <VideoElement
+                    key={videoPane.paneId}
+                    videoPane={videoPane}
+                    maxHeight={videoHeight}
+                    width={contextState.viewPort.video.width}
+                    onAspectRatioChange={rearrangeIsotope}
+                  />
+                ) : null
+            )
+          : null}
       </div>
       {/* Screen share */}
       {contextState.meetingStatus !== MEETING_STATUSES.INACTIVE &&

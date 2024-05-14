@@ -83,17 +83,19 @@
   width: 40%;
 }
 
+/*
 @media (max-width: 800px) {
   .grid-item {
-    width: 50%; /* 2 columns on smaller screens */
+    width: 50%; 2 columns on smaller screens
   }
 }
 
 @media (max-width: 500px) {
   .grid-item {
-    width: 100%; /* 1 column on smallest screens */
+    width: 100%; 1 column on smallest screens
   }
 }
+*/
 
 .video-name::before,
 .video-name::after {

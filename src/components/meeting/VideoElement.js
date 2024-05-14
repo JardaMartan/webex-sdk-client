@@ -28,43 +28,62 @@ const VideoElement = ({
 
   const videoElement = useRef(videoPane.paneId);
   const [videoAspectRatio, setVideoAspectRatio] = useState(1);
+  const [shouldArrange, setShouldArrange] = useState(false);
   const videoBoxMaxSize = maxHeight;
   const contextState = useMeeting();
   const [activeSpeaker, setActiveSpeaker] = useState(false);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isContentSharing, setIsContentSharing] = useState(false);
 
-  useEffect(() => {
-    if (videoPane?.stream && videoElement) {
-      console.log(
-        `Video pane dimensions: ${videoPane.width} x ${
-          videoPane.height
-        }, box dimensions: ${
-          videoBoxMaxSize * videoAspectRatio
-        } x ${videoBoxMaxSize}`
-      );
-      videoElement.current.srcObject = videoPane.stream;
-      videoElement.current.addEventListener("resize", () => {
-        const width = videoElement.current.videoWidth;
-        const height = videoElement.current.videoHeight;
-        const aspectRatio = width / height;
-        setVideoAspectRatio(aspectRatio);
-        // if (aspectRatio > 0 && onDimensionsChange) {
-        //   onDimensionsChange(aspectRatio);
-        // }
+  useEffect(
+    () => {
+      if (
+        videoPane?.stream &&
+        videoElement &&
+        videoPane.isLive &&
+        videoPane.isActive
+      ) {
         console.log(
-          `Video dimensions updated:  ${width} x ${height}, ratio: ${aspectRatio}`
+          `Video pane dimensions: ${videoPane.width} x ${
+            videoPane.height
+          }, box dimensions: ${
+            videoBoxMaxSize * videoAspectRatio
+          } x ${videoBoxMaxSize}`
         );
-        if (videoPane.width !== width || videoPane.height !== height) {
+        videoElement.current.srcObject = videoPane.stream;
+        videoElement.current.addEventListener("resize", () => {
+          if (!videoElement.current) return; // avoid conflict at unmount
+
+          const width = videoElement.current.videoWidth;
+          const height = videoElement.current.videoHeight;
+          const aspectRatio = width / height;
+          setVideoAspectRatio(aspectRatio);
+          // if (aspectRatio > 0 && onAspectRatioChange) {
+          //   onAspectRatioChange(aspectRatio);
+          // }
           console.log(
-            `Updating video pane ${videoPane.paneId} dimensions from ${videoPane.width}x${videoPane.height} to ${width}x${height} (aspect ratio: ${aspectRatio})`
+            `Video dimensions updated:  ${width} x ${height}, ratio: ${aspectRatio}`
           );
-          videoPane.width = width;
-          videoPane.height = height;
-        }
-      });
-    }
-  }, [videoPane.media, videoPane.stream, videoElement]); //eslint-disable-line react-hooks/exhaustive-deps
+          if (videoPane.width !== width || videoPane.height !== height) {
+            console.log(
+              `Updating video pane ${videoPane.paneId} dimensions from ${videoPane.width}x${videoPane.height} to ${width}x${height} (aspect ratio: ${aspectRatio})`
+            );
+            videoPane.width = width;
+            videoPane.height = height;
+            setShouldArrange(true);
+          }
+        });
+      }
+    },
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      videoPane.media,
+      videoPane?.stream,
+      videoPane.isLive,
+      videoPane.isActive,
+      videoElement,
+    ]
+  );
 
   useEffect(() => {
     console.log(`Video aspect ratio changed: ${videoAspectRatio}`);
@@ -74,8 +93,16 @@ const VideoElement = ({
   }, [videoAspectRatio]); //eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    console.log(`Should arrange video panes: ${shouldArrange}`);
+    if (shouldArrange && onAspectRatioChange) {
+      onAspectRatioChange(videoAspectRatio);
+      setShouldArrange(false);
+    }
+  }, [shouldArrange]); //eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     console.log(
-      `Video element dimensions: ${videoElement.videoWidth} x ${videoElement.videoHeight}`
+      `Video element dimensions: ${videoElement.current.videoWidth} x ${videoElement.current.videoHeight}`
     );
   }, [videoElement]); //eslint-disable-line react-hooks/exhaustive-deps
 

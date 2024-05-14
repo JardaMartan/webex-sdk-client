@@ -139,12 +139,11 @@ export const MeetingProvider = ({
             : {}),
           ...action.videoPane,
         };
-        const xPane = { [newPane.paneId]: newPane };
         const newGrp = {
           ...(state.multistreamVideo
             ? state.multistreamVideo[action.groupId]
             : {}),
-          ...xPane,
+          ...newPane,
         };
         return {
           ...state,
@@ -297,17 +296,12 @@ export const MeetingProvider = ({
     });
   };
 
-  // eslint-disable-next-line no-unused-vars
-  const setMultistreamVideoPane = (videoPane) => {
-    for (const [groupId, group] of Object.entries(state.multistreamVideo)) {
-      if (group[videoPane.paneId]) {
-        dispatch({
-          type: actionTypes.SET_MULTISTREAM_VIDEO_PANE,
-          groupId,
-          videoPane,
-        });
-      }
-    }
+  const setMultistreamVideoPane = (groupId, videoPane) => {
+    dispatch({
+      type: actionTypes.SET_MULTISTREAM_VIDEO_PANE,
+      groupId,
+      videoPane,
+    });
   };
 
   const clearMultistreamVideo = () => {
@@ -933,7 +927,7 @@ export const MeetingProvider = ({
                 `${groupId}.${index} ${remoteMedia.id}`,
                 "update"
               );
-              setMultistreamVideoGroup(groupId, {
+              setMultistreamVideoPane(groupId, {
                 [remoteMedia.id]: updatedVideoPane,
               });
             });
@@ -961,7 +955,7 @@ export const MeetingProvider = ({
               `screenShare ${screenShareVideo.id}`,
               "update"
             );
-            setMultistreamVideoGroup("share", {
+            setMultistreamVideoPane("share", {
               [screenShareVideo.id]: updatedSharePane,
             });
           });
