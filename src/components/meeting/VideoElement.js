@@ -24,6 +24,7 @@ const VideoElement = ({
   const mutedColor = red["A200"];
   const titleBackground = `rgba(0, 0, 0, 0.6)`;
   const fontSize = 12;
+  const iconSize = 16;
   const padding = 6;
 
   const videoElement = useRef(videoPane.paneId);
@@ -208,12 +209,12 @@ const VideoElement = ({
             }}
           >
             {activeSpeaker ? (
-              <MicOutlined sx={{ fontSize: fontSize, color: speakingColor }} />
+              <MicOutlined sx={{ fontSize: iconSize, color: speakingColor }} />
             ) : (
               ""
             )}
             {isAudioMuted ? (
-              <MicOffOutlined sx={{ fontSize: fontSize, color: mutedColor }} />
+              <MicOffOutlined sx={{ fontSize: iconSize, color: mutedColor }} />
             ) : (
               ""
             )}
@@ -222,7 +223,7 @@ const VideoElement = ({
             &nbsp;
             {isContentSharing ? (
               <PresentToAllOutlined
-                sx={{ fontSize: fontSize, color: "white" }}
+                sx={{ fontSize: iconSize, color: "white" }}
               />
             ) : (
               ""
