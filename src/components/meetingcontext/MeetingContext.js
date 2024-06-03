@@ -27,6 +27,7 @@ import {
   setVirtualBackgroundImage,
   setVirtualBackgroundVideo,
 } from "../../redux/actions/mediaDevicesActions";
+import { setSelfView } from "../../redux/actions/viewActions";
 
 /* TODO:
 - 24kHz problem of AirPods (BNR)
@@ -54,12 +55,14 @@ export const MeetingProvider = ({
   webexConfig,
   mediaDevices,
   settings,
+  selfView,
   setAudioDeviceInput,
   setVideoDeviceInput,
   setAudioNoiseRemoval,
   setVirtualBackgroundMode,
   setVirtualBackgroundImage,
   setVirtualBackgroundVideo,
+  setSelfView,
   ...props
 }) => {
   const [webexClient, setWebexClient] = useState(null);
@@ -151,6 +154,11 @@ export const MeetingProvider = ({
             ...(state.multistreamVideo ? state.multistreamVideo : {}),
             [action.groupId]: newGrp,
           },
+        };
+      case actionTypes.SET_SELF_VIDEO_PANE:
+        return {
+          ...state,
+          selfVideoPane: action.selfVideoPane,
         };
       case actionTypes.CLEAR_MULTISTREAM_VIDEO:
         return { ...state, multistreamVideo: null };
@@ -302,6 +310,10 @@ export const MeetingProvider = ({
       groupId,
       videoPane,
     });
+  };
+
+  const setSelfVideoPane = (selfVideoPane) => {
+    dispatch({ type: actionTypes.SET_SELF_VIDEO_PANE, selfVideoPane });
   };
 
   const clearMultistreamVideo = () => {
@@ -674,12 +686,8 @@ export const MeetingProvider = ({
         });
       }
     }
-    if (
-      state.isMultistream &&
-      state.localMedia.video &&
-      meeting?.members?.selfId
-    ) {
-      console.log("Adding selfview to multistream video panels");
+    if (state.localMedia.video && meeting?.members?.selfId) {
+      console.log("Creating selfview video pane");
       const selfVideoPane = createVideoPane(
         state.localMedia.video,
         state.localMedia.video.outputStream,
@@ -689,9 +697,13 @@ export const MeetingProvider = ({
         "self",
         "initialization"
       );
-      setMultistreamVideoGroup("self", {
-        [state.localMedia.video.id]: selfVideoPane,
-      });
+      setSelfVideoPane(selfVideoPane);
+      if (state.isMultistream) {
+        console.log("Adding selfview to multistream video panels");
+        setMultistreamVideoGroup("self", {
+          [state.localMedia.video.id]: selfVideoPane,
+        });
+      }
     }
   }, [state.localMedia.video, state.isMultistream, meeting?.members?.selfId]); //eslint-disable-line react-hooks/exhaustive-deps
 
@@ -787,6 +799,9 @@ export const MeetingProvider = ({
     // Update size initially and on every window resize
     updateSize();
     window.addEventListener("resize", updateSize);
+
+    setAudioMuted(selfView?.audioMuted ? selfView.audioMuted : false);
+    setVideoMuted(selfView?.videoMuted ? selfView.videoMuted : false);
 
     // Clean up the event listener when the component unmounts
     return () => window.removeEventListener("resize", updateSize);
@@ -1293,6 +1308,8 @@ export const MeetingProvider = ({
     }
     console.log(`Audio ${isAudioMuted ? "" : "un"}mute requested`);
     state.localMedia.audio.setMuted(isAudioMuted);
+    console.log(`Saving audio muted state: ${isAudioMuted}`);
+    setSelfView({ audioMuted: isAudioMuted });
   };
 
   /**
@@ -1306,6 +1323,8 @@ export const MeetingProvider = ({
     }
     console.log(`Video ${isVideoMuted ? "" : "un"}mute requested`);
     state.localMedia.video.setMuted(isVideoMuted);
+    console.log(`Saving video muted state: ${isVideoMuted}`);
+    setSelfView({ videoMuted: isVideoMuted });
   };
 
   /**
@@ -1790,6 +1809,7 @@ const initialState = {
       video_input: [],
     },
   },
+  selfVideoPane: null,
   remoteMedia: {
     audio: null,
     video: null,
@@ -1828,12 +1848,14 @@ MeetingProvider.propTypes = {
   webexConfig: propTypes.object.isRequired,
   mediaDevices: propTypes.object.isRequired,
   settings: propTypes.object.isRequired,
+  selfView: propTypes.object.isRequired,
   setAudioDeviceInput: propTypes.func.isRequired,
   setVideoDeviceInput: propTypes.func.isRequired,
   setAudioNoiseRemoval: propTypes.func.isRequired,
   setVirtualBackgroundMode: propTypes.func.isRequired,
   setVirtualBackgroundImage: propTypes.func.isRequired,
   setVirtualBackgroundVideo: propTypes.func.isRequired,
+  setSelfView: propTypes.func.isRequired,
 };
 
 const mapStateToProps = (state) => {
@@ -1842,6 +1864,10 @@ const mapStateToProps = (state) => {
     webexConfig: state.webex,
     mediaDevices: state.mediaDevices,
     settings: state.settings,
+    selfView: state?.view?.selfView || {
+      isAudioMuted: false,
+      isVideoMuted: false,
+    },
   };
 };
 
@@ -1852,6 +1878,7 @@ const mapDispatchToProps = {
   setVirtualBackgroundMode,
   setVirtualBackgroundImage,
   setVirtualBackgroundVideo,
+  setSelfView,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(MeetingProvider);

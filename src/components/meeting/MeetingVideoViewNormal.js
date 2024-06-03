@@ -1,10 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { Box, Container, Paper } from "@mui/material";
 import RemoteVideoOverlay from "./RemoteVideoOverlay";
 import { MEETING_STATUSES } from "../../constants/meeting";
 import { useMeeting } from "../meetingcontext/MeetingContext";
+// import Draggable from "react-draggable";
+import { setSelfViewPosition } from "../../redux/actions/viewActions";
+import SelfView from "./SelfView";
 
-const MeetingVideoViewNormal = () => {
+const MeetingVideoViewNormal = ({ selfView, setSelfViewPosition }) => {
   const remoteVideoRef = useRef("remoteVideo");
   const localVideoRef = useRef("localVideo");
   const remoteShareRef = useRef("remoteShare");
@@ -110,6 +115,11 @@ const MeetingVideoViewNormal = () => {
     });
   }, []);
 
+  const pos = {
+    ...(selfView?.position ? selfView.position : { position: { x: 0, y: 0 } }),
+  };
+  console.log("SelfView position: ", pos);
+
   return (
     <Box
       my={2}
@@ -178,42 +188,13 @@ const MeetingVideoViewNormal = () => {
             />
           </Container>
         </Paper>
-        <RemoteVideoOverlay className="remote-video-overlay" />
-        <Paper
-          elevation={6}
-          display="flex"
-          sx={{
-            width: 240,
-            height: 135,
-            bottom: 10,
-            right: 10,
-            zindex: 5,
-            overflow: "hidden",
-            position: "absolute",
-            justifyContent: "flex-end",
-            borderRadius: 2,
-          }}
-        >
-          <Container
-            disableGutters={true}
-            maxWidth={false}
-            sx={{
-              width: 1,
-              height: 1,
-            }}
-          >
-            <video
-              id="localVideo"
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              width="100%"
-              height="100%"
-              zindex={4}
-            />
-          </Container>
-        </Paper>
+        <RemoteVideoOverlay />
       </Box>
+      {/* Selfview */}
+      {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
+        contextState.selfVideoPane && (
+          <SelfView selfVideoPane={contextState.selfVideoPane} />
+        )}
       {contextState.meetingStatus !== MEETING_STATUSES.INACTIVE &&
         contextState.meetingStatus !== MEETING_STATUSES.JOINING &&
         contextState.isRemoteShareActive && (
@@ -268,4 +249,22 @@ const MeetingVideoViewNormal = () => {
   );
 };
 
-export default MeetingVideoViewNormal;
+MeetingVideoViewNormal.propTypes = {
+  selfView: PropTypes.object.isRequired,
+  setSelfViewPosition: PropTypes.func.isRequired,
+};
+
+function mapStateToProps(state) {
+  return {
+    selfView: state?.view?.selfView || { position: { x: 0, y: 0 } },
+  };
+}
+
+const mapDispatchToProps = {
+  setSelfViewPosition,
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(MeetingVideoViewNormal);

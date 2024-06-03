@@ -45,7 +45,15 @@ const initialState = {
     },
   },
   settings: {
-    multistream: false,
+    multistream: true,
+  },
+  view: {
+    selfView: {
+      visible: true,
+      audioMuted: false,
+      videoMuted: false,
+      position: { x: 0, y: 0 },
+    },
   },
 };
 

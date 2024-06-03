@@ -12,6 +12,7 @@ const VideoElement = ({
   videoPane,
   maxHeight = 720,
   width = 1920,
+  padding = 6,
   onAspectRatioChange,
 }) => {
   // view settings
@@ -25,7 +26,7 @@ const VideoElement = ({
   const titleBackground = `rgba(0, 0, 0, 0.6)`;
   const fontSize = 12;
   const iconSize = 16;
-  const padding = 6;
+  // const padding = 6;
 
   const videoElement = useRef(videoPane.paneId);
   const [videoAspectRatio, setVideoAspectRatio] = useState(1);

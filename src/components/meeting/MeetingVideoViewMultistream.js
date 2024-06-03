@@ -1,12 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { useMeeting } from "../meetingcontext/MeetingContext";
 import VideoElement from "./VideoElement";
 import { MEETING_STATUSES } from "../../constants/meeting";
 import Isotope from "isotope-layout";
 import RemoteVideoOverlay from "./RemoteVideoOverlay";
 import ShareElement from "./ShareElement";
+// import { Paper } from "@mui/material";
+// import Draggable from "react-draggable";
+import { setSelfViewPosition } from "../../redux/actions/viewActions";
+import SelfView from "./SelfView";
 
-const MeetingVideoViewMultistream = () => {
+const MeetingVideoViewMultistream = ({ selfView, setSelfViewPosition }) => {
   const contextState = useMeeting();
   const isoRef = useRef("multistreamPanel");
   const isotope = useRef();
@@ -147,12 +153,10 @@ const MeetingVideoViewMultistream = () => {
 
   return (
     <div position="relative" display="flex">
-      {/* Messages on the screen */}
-      <RemoteVideoOverlay className="remote-video-overlay" />
       {/* Video elements arranged by isotope */}
       <div
         id="multistreamPanel"
-        position="absolute"
+        position="relative"
         // justifyContent="flex-start"
         ref={isoRef}
         height={contextState.viewPort.video.height}
@@ -178,22 +182,6 @@ const MeetingVideoViewMultistream = () => {
               ) : null
             )
           : null}
-        {/* Selfview */}
-        {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
-        contextState.multistreamVideo?.self
-          ? Object.values(contextState.multistreamVideo.self).map(
-              (videoPane, index) =>
-                videoPane?.isLive ? (
-                  <VideoElement
-                    key={videoPane.paneId}
-                    videoPane={videoPane}
-                    maxHeight={videoHeight}
-                    width={contextState.viewPort.video.width}
-                    onAspectRatioChange={rearrangeIsotope}
-                  />
-                ) : null
-            )
-          : null}
       </div>
       {/* Screen share */}
       {contextState.meetingStatus !== MEETING_STATUSES.INACTIVE &&
@@ -206,8 +194,33 @@ const MeetingVideoViewMultistream = () => {
             height={contextState.viewPort.share.height}
           />
         )}
+      {/* Selfview */}
+      {contextState.meetingStatus === MEETING_STATUSES.IN_MEETING &&
+        contextState.selfVideoPane && (
+          <SelfView selfVideoPane={contextState.selfVideoPane} />
+        )}
+      {/* Messages on the screen */}
+      <RemoteVideoOverlay />
     </div>
   );
 };
 
-export default MeetingVideoViewMultistream;
+MeetingVideoViewMultistream.propTypes = {
+  selfView: PropTypes.object,
+  setSelfViewPosition: PropTypes.func,
+};
+
+function mapStateToProps(state) {
+  return {
+    selfView: state?.view?.selfView || { position: { x: 0, y: 0 } },
+  };
+}
+
+const mapDispatchToProps = {
+  setSelfViewPosition,
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(MeetingVideoViewMultistream);
