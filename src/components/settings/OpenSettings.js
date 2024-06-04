@@ -1,4 +1,4 @@
-import { IconButton } from "@mui/joy";
+import { IconButton, Tooltip } from "@mui/joy";
 import { Settings } from "@mui/icons-material";
 import React from "react";
 import SettingsDialog from "./SettingsDialog";
@@ -12,14 +12,16 @@ const OpenSettings = () => {
 
   return (
     <div>
-      <IconButton
-        onClick={() => {
-          setOpen(true);
-        }}
-        sx={{ width: 48, height: 48, color: "white" }}
-      >
-        <Settings />
-      </IconButton>
+      <Tooltip title="Nastavení">
+        <IconButton
+          onClick={() => {
+            setOpen(true);
+          }}
+          sx={{ width: 48, height: 48, color: "white" }}
+        >
+          <Settings />
+        </IconButton>
+      </Tooltip>
       <SettingsDialog open={open} onClose={handleClose} />
     </div>
   );

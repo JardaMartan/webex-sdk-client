@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { Box, ButtonGroup, IconButton } from "@mui/joy";
+import { Box, ButtonGroup, IconButton, Tooltip } from "@mui/joy";
 import {
   Mic,
   MicOff,
@@ -66,101 +66,117 @@ const MeetingControls = ({ selfView, updateSelfView, setSelfViewPosition }) => {
       }}
     >
       <ButtonGroup spacing="0.5rem" variant="soft" sx={{ border: "4px" }}>
-        <IconButton
-          disabled={!contextState.isUnmuteAllowed && contextState.isAudioMuted}
-          color={contextState.isAudioMuted ? "danger" : "primary"}
-          onClick={() => {
-            setAudioMuted(!contextState.isAudioMuted);
-          }}
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          {/* Audio {isAudioMuted ? "Zap." : "Vyp."} */}
-          {contextState.isAudioMuted ? (
-            <MicOff fontSize="large" />
-          ) : (
-            <Mic fontSize="large" />
-          )}
-        </IconButton>
-        <IconButton
-          color={contextState.isVideoMuted ? "danger" : "primary"}
-          onClick={() => {
-            setVideoMuted(!contextState.isVideoMuted);
-          }}
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          {/* Video {isVideoMuted ? "Zap." : "Vyp."} */}
-          {contextState.isVideoMuted ? (
-            <VideocamOff fontSize="large" />
-          ) : (
-            <Videocam fontSize="large" />
-          )}
-        </IconButton>
-        <IconButton
-          color={contextState.isHandRaised ? "danger" : "primary"}
-          onClick={() => {
-            setHandRaised(!contextState.isHandRaised);
-          }}
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          <BackHand fontSize="large" />
-        </IconButton>
-        <IconButton
-          color={isScreenShare ? "danger" : "primary"}
-          onClick={() => {
-            if (isScreenShare) {
-              stopScreenShare();
-            } else {
-              startScreenShare();
+        <Tooltip title="Ztlumení mikrofonu">
+          <IconButton
+            disabled={
+              !contextState.isUnmuteAllowed && contextState.isAudioMuted
             }
-          }}
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          {isScreenShare ? (
-            <CancelPresentation fontSize="large" />
-          ) : (
-            <PresentToAll fontSize="large" />
-          )}
-        </IconButton>
-        <IconButton
-          color="primary"
-          onClick={() => {
-            dispatch({
-              type: actionTypes.SET_DTMF_PANEL,
-              dtmfPanel: { hidden: !contextState.dtmfPanel.hidden },
-            });
-          }}
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          <Dialpad fontSize="large" />
-        </IconButton>
-        <IconButton
-          color={selfViewVisible ? "primary" : "danger"}
-          onClick={() => {
-            updateSelfView({ visible: !selfViewVisible });
-            if (selfViewVisible) {
-              setSelfViewPosition({ x: 0, y: 0 });
+            color={contextState.isAudioMuted ? "danger" : "primary"}
+            onClick={() => {
+              setAudioMuted(!contextState.isAudioMuted);
+            }}
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            {/* Audio {isAudioMuted ? "Zap." : "Vyp."} */}
+            {contextState.isAudioMuted ? (
+              <MicOff fontSize="large" />
+            ) : (
+              <Mic fontSize="large" />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Vypnutí kamery">
+          <IconButton
+            color={contextState.isVideoMuted ? "danger" : "primary"}
+            onClick={() => {
+              setVideoMuted(!contextState.isVideoMuted);
+            }}
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            {/* Video {isVideoMuted ? "Zap." : "Vyp."} */}
+            {contextState.isVideoMuted ? (
+              <VideocamOff fontSize="large" />
+            ) : (
+              <Videocam fontSize="large" />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Přihlášení o slovo">
+          <IconButton
+            color={contextState.isHandRaised ? "danger" : "primary"}
+            onClick={() => {
+              setHandRaised(!contextState.isHandRaised);
+            }}
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            <BackHand fontSize="large" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Sdílení obrazovky nebo aplikace">
+          <IconButton
+            color={isScreenShare ? "danger" : "primary"}
+            onClick={() => {
+              if (isScreenShare) {
+                stopScreenShare();
+              } else {
+                startScreenShare();
+              }
+            }}
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            {isScreenShare ? (
+              <CancelPresentation fontSize="large" />
+            ) : (
+              <PresentToAll fontSize="large" />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Klávesnice pro tónovou volbu">
+          <IconButton
+            color="primary"
+            onClick={() => {
+              dispatch({
+                type: actionTypes.SET_DTMF_PANEL,
+                dtmfPanel: { hidden: !contextState.dtmfPanel.hidden },
+              });
+            }}
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            <Dialpad fontSize="large" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Vlastní zobrazení">
+          <IconButton
+            color={selfViewVisible ? "primary" : "danger"}
+            onClick={() => {
+              updateSelfView({ visible: !selfViewVisible });
+              if (selfViewVisible) {
+                setSelfViewPosition({ x: 0, y: 0 });
+              }
+            }}
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            {selfView.visible ? (
+              <Person fontSize="large" />
+            ) : (
+              <PersonOff fontSize="large" />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Opustit konferenci">
+          <IconButton
+            color="danger"
+            onClick={() =>
+              dispatch({
+                type: actionTypes.SET_ALERT_LEAVE_MEETING,
+                alertLeaveMeeting: true,
+              })
             }
-          }}
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          {selfView.visible ? (
-            <Person fontSize="large" />
-          ) : (
-            <PersonOff fontSize="large" />
-          )}
-        </IconButton>
-        <IconButton
-          color="danger"
-          onClick={() =>
-            dispatch({
-              type: actionTypes.SET_ALERT_LEAVE_MEETING,
-              alertLeaveMeeting: true,
-            })
-          }
-          sx={{ width: buttonSides, height: buttonSides }}
-        >
-          <Close fontSize="large" />
-        </IconButton>
+            sx={{ width: buttonSides, height: buttonSides }}
+          >
+            <Close fontSize="large" />
+          </IconButton>
+        </Tooltip>
       </ButtonGroup>
     </Box>
   );
