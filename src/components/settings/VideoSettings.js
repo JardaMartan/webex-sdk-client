@@ -57,7 +57,10 @@ const VideoSettings = ({
           MEETING_STATUSES.IN_MEETING,
         ].includes(contextState.meetingStatus)
       ) {
-        startCameraStream(mediaDevices.selected.video_input);
+        startCameraStream(
+          mediaDevices.selected.video_input,
+          mediaDevices.selected?.video_quality || "720p"
+        );
       }
     } else {
       if (
@@ -125,7 +128,10 @@ const VideoSettings = ({
               onChange={(event) => {
                 console.log("Video input changed", event.target.value);
                 setVideoDeviceInput(event.target.value);
-                startCameraStream(event.target.value);
+                startCameraStream(
+                  event.target.value,
+                  mediaDevices.selected?.video_quality || "720p"
+                );
               }}
             >
               {contextState.localMedia.available.video_input.map((device) => (

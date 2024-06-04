@@ -32,12 +32,15 @@ import { setSelfView, updateSelfView } from "../../redux/actions/viewActions";
 /* TODO:
 - 24kHz problem of AirPods (BNR)
   see: https://www.npmjs.com/package/@webex/web-media-effects#supported-bitrates
+- occasional selection of non-default camera device - happens if there is no camera device selected in the settings
+    and the camera doesn't support the desired resolution (for example: MacBook Pro camera with 720p limit and 1080p selected).
+    In that case there may happen an automatic OS selection of a different camera device that can handle the resolution
+    (for example Continuity camera of the iPhone in proximity).
 
 - handle cancel of password/captcha modals - should leave the meeting or add an option to re-open the modals?
 - participants list
 - chat
 - raise/lower hand using DTMF (configurable in settings) if meeting is not Webex
-- RemoteVideoOverlay in multistream mode
 
 stretch:
 - audio level indicator in audio settings
@@ -1497,39 +1500,46 @@ export const MeetingProvider = ({
    * @param {string} quality
    */
   const startCameraStream = async (deviceId = null, quality = "720p") => {
-    stopCameraStream();
-    let stream;
-    const baseVideoConstraints =
-      state.localMedia.videoConstraints[localVideoQuality[quality]];
-    const constraints = {
-      ...baseVideoConstraints, // 720p
-      deviceId: deviceId ? { exact: deviceId } : undefined,
-    };
-    try {
-      console.log("Creating camera stream with constraints - ", constraints);
-      stream = await createCameraStream(constraints);
-      console.log("Created camera stream - ", stream);
-      setLocalMedia({ video: stream });
-    } catch (err) {
-      if (
-        err.type === "CREATE_STREAM_FAILED" &&
-        err.message.includes("OverconstrainedError")
-      ) {
-        console.log("Retrying to create camera stream without deviceId");
-        setVideoDeviceInput("");
-        try {
-          stream = await createCameraStream(baseVideoConstraints);
-          console.log("Created camera stream - ", stream);
-          setLocalMedia({ video: stream });
-        } catch (err) {
+    async function localStartCameraStream() {
+      let stream;
+      const baseVideoConstraints =
+        state.localMedia.videoConstraints[localVideoQuality[quality]];
+
+      const constraints = {
+        ...baseVideoConstraints, // 720p
+      };
+      if (deviceId) {
+        constraints.deviceId = { exact: deviceId };
+      }
+      try {
+        console.log("Creating camera stream with constraints - ", constraints);
+        stream = await createCameraStream(constraints);
+        console.log("Created camera stream - ", stream);
+        setLocalMedia({ video: stream });
+      } catch (err) {
+        if (
+          err.type === "CREATE_STREAM_FAILED" &&
+          err.message.includes("OverconstrainedError")
+        ) {
+          console.log("Retrying to create camera stream without deviceId");
+          setVideoDeviceInput("");
+          try {
+            stream = await createCameraStream(baseVideoConstraints);
+            console.log("Created camera stream - ", stream);
+            setLocalMedia({ video: stream });
+          } catch (err) {
+            console.error("Error creating camera stream - ", err);
+            setLocalMedia({ video: null });
+          }
+        } else {
           console.error("Error creating camera stream - ", err);
           setLocalMedia({ video: null });
         }
-      } else {
-        console.error("Error creating camera stream - ", err);
-        setLocalMedia({ video: null });
       }
     }
+
+    stopCameraStream();
+    await localStartCameraStream();
   };
 
   /**
