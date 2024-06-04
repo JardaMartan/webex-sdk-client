@@ -18,11 +18,6 @@ export default function viewReducer(state = initialState.view, action) {
         ...state,
         selfView: { ...state.selfView, position: action.position },
       };
-    case types.SET_SELFVIEW_VISIBLE:
-      return {
-        ...state,
-        selfView: { ...state.selfView, visible: action.visible },
-      };
     default:
       return state;
   }

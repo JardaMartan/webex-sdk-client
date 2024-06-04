@@ -25,15 +25,11 @@ import {
 import { MEETING_STATUSES } from "../../constants/meeting";
 import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
 import {
-  setSelfViewVisible,
+  updateSelfView,
   setSelfViewPosition,
 } from "../../redux/actions/viewActions";
 
-const MeetingControls = ({
-  selfView,
-  setSelfViewVisible,
-  setSelfViewPosition,
-}) => {
+const MeetingControls = ({ selfView, updateSelfView, setSelfViewPosition }) => {
   const buttonSides = 48;
   const contextState = useMeeting();
   const dispatch = useMeetingDispatch();
@@ -140,7 +136,7 @@ const MeetingControls = ({
         <IconButton
           color={selfViewVisible ? "primary" : "danger"}
           onClick={() => {
-            setSelfViewVisible(!selfViewVisible);
+            updateSelfView({ visible: !selfViewVisible });
             if (selfViewVisible) {
               setSelfViewPosition({ x: 0, y: 0 });
             }
@@ -172,7 +168,7 @@ const MeetingControls = ({
 
 MeetingControls.propTypes = {
   selfView: PropTypes.object,
-  setSelfViewVisible: PropTypes.func.isRequired,
+  updateSelfView: PropTypes.func.isRequired,
   setSelfViewPosition: PropTypes.func.isRequired,
 };
 
@@ -186,7 +182,7 @@ function mapStateToProps(state) {
 }
 
 const mapDispatchToProps = {
-  setSelfViewVisible,
+  updateSelfView,
   setSelfViewPosition,
 };
 

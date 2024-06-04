@@ -20,10 +20,3 @@ export function setSelfViewPosition(position) {
     dispatch({ type: types.SET_SELFVIEW_POSITION, position });
   };
 }
-
-export function setSelfViewVisible(visible) {
-  return async function (dispatch, getState) {
-    console.log(`set selfview visible: ${visible}`);
-    dispatch({ type: types.SET_SELFVIEW_VISIBLE, visible });
-  };
-}

@@ -115,11 +115,6 @@ const MeetingVideoViewNormal = ({ selfView, setSelfViewPosition }) => {
     });
   }, []);
 
-  const pos = {
-    ...(selfView?.position ? selfView.position : { position: { x: 0, y: 0 } }),
-  };
-  console.log("SelfView position: ", pos);
-
   return (
     <Box
       my={2}
