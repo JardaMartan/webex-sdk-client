@@ -27,7 +27,7 @@ import {
   setVirtualBackgroundImage,
   setVirtualBackgroundVideo,
 } from "../../redux/actions/mediaDevicesActions";
-import { setSelfView } from "../../redux/actions/viewActions";
+import { setSelfView, updateSelfView } from "../../redux/actions/viewActions";
 
 /* TODO:
 - 24kHz problem of AirPods (BNR)
@@ -63,6 +63,7 @@ export const MeetingProvider = ({
   setVirtualBackgroundImage,
   setVirtualBackgroundVideo,
   setSelfView,
+  updateSelfView,
   ...props
 }) => {
   const [webexClient, setWebexClient] = useState(null);
@@ -227,6 +228,7 @@ export const MeetingProvider = ({
 
   const setIsAudioMuted = (isAudioMuted) => {
     dispatch({ type: actionTypes.SET_AUDIO_MUTED, isAudioMuted });
+    updateSelfView({ audioMuted: isAudioMuted });
   };
 
   const setOverlay = (overlay) => {
@@ -239,6 +241,7 @@ export const MeetingProvider = ({
 
   const setIsVideoMuted = (isVideoMuted) => {
     dispatch({ type: actionTypes.SET_VIDEO_MUTED, isVideoMuted });
+    updateSelfView({ videoMuted: isVideoMuted });
   };
 
   const setIsUnmuteAllowed = (isUnmuteAllowed) => {
@@ -560,6 +563,12 @@ export const MeetingProvider = ({
           component: <MeetingControls />,
         });
         setOverlay({ hidden: true, message: "" });
+        if (selfView?.audioMuted ? selfView.audioMuted : false) {
+          setAudioMuted(true);
+        }
+        if (selfView?.videoMuted ? selfView.videoMuted : false) {
+          setVideoMuted(true);
+        }
         break;
       case MEETING_STATUSES.INACTIVE:
         setControlPanel(
@@ -799,9 +808,6 @@ export const MeetingProvider = ({
     // Update size initially and on every window resize
     updateSize();
     window.addEventListener("resize", updateSize);
-
-    setAudioMuted(selfView?.audioMuted ? selfView.audioMuted : false);
-    setVideoMuted(selfView?.videoMuted ? selfView.videoMuted : false);
 
     // Clean up the event listener when the component unmounts
     return () => window.removeEventListener("resize", updateSize);
@@ -1309,7 +1315,7 @@ export const MeetingProvider = ({
     console.log(`Audio ${isAudioMuted ? "" : "un"}mute requested`);
     state.localMedia.audio.setMuted(isAudioMuted);
     console.log(`Saving audio muted state: ${isAudioMuted}`);
-    setSelfView({ audioMuted: isAudioMuted });
+    updateSelfView({ audioMuted: isAudioMuted });
   };
 
   /**
@@ -1323,8 +1329,8 @@ export const MeetingProvider = ({
     }
     console.log(`Video ${isVideoMuted ? "" : "un"}mute requested`);
     state.localMedia.video.setMuted(isVideoMuted);
-    console.log(`Saving video muted state: ${isVideoMuted}`);
-    setSelfView({ videoMuted: isVideoMuted });
+    // console.log(`Saving video muted state: ${isVideoMuted}`);
+    // updateSelfView({ videoMuted: isVideoMuted });
   };
 
   /**
@@ -1856,6 +1862,7 @@ MeetingProvider.propTypes = {
   setVirtualBackgroundImage: propTypes.func.isRequired,
   setVirtualBackgroundVideo: propTypes.func.isRequired,
   setSelfView: propTypes.func.isRequired,
+  updateSelfView: propTypes.func.isRequired,
 };
 
 const mapStateToProps = (state) => {
@@ -1879,6 +1886,7 @@ const mapDispatchToProps = {
   setVirtualBackgroundImage,
   setVirtualBackgroundVideo,
   setSelfView,
+  updateSelfView,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(MeetingProvider);

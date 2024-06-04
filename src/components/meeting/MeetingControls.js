@@ -1,4 +1,6 @@
 import React from "react";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { Box, ButtonGroup, IconButton } from "@mui/joy";
 import {
   Mic,
@@ -12,6 +14,8 @@ import {
   Dialpad,
   PresentToAll,
   CancelPresentation,
+  Person,
+  PersonOff,
 } from "@mui/icons-material";
 import {
   useMeeting,
@@ -20,8 +24,16 @@ import {
 } from "../meetingcontext/MeetingContext";
 import { MEETING_STATUSES } from "../../constants/meeting";
 import * as actionTypes from "../meetingcontext/MeetingContextActionTypes";
+import {
+  setSelfViewVisible,
+  setSelfViewPosition,
+} from "../../redux/actions/viewActions";
 
-const MeetingControls = () => {
+const MeetingControls = ({
+  selfView,
+  setSelfViewVisible,
+  setSelfViewPosition,
+}) => {
   const buttonSides = 48;
   const contextState = useMeeting();
   const dispatch = useMeetingDispatch();
@@ -34,6 +46,10 @@ const MeetingControls = () => {
   } = useMeetingAction();
 
   const isScreenShare = contextState.localMedia.share.video;
+  let selfViewVisible = true;
+  if (selfView.visible !== undefined) {
+    selfViewVisible = selfView.visible;
+  }
 
   return (
     <Box
@@ -122,6 +138,22 @@ const MeetingControls = () => {
           <Dialpad fontSize="large" />
         </IconButton>
         <IconButton
+          color={selfViewVisible ? "primary" : "danger"}
+          onClick={() => {
+            setSelfViewVisible(!selfViewVisible);
+            if (selfViewVisible) {
+              setSelfViewPosition({ x: 0, y: 0 });
+            }
+          }}
+          sx={{ width: buttonSides, height: buttonSides }}
+        >
+          {selfView.visible ? (
+            <Person fontSize="large" />
+          ) : (
+            <PersonOff fontSize="large" />
+          )}
+        </IconButton>
+        <IconButton
           color="danger"
           onClick={() =>
             dispatch({
@@ -138,6 +170,24 @@ const MeetingControls = () => {
   );
 };
 
-MeetingControls.propTypes = {};
+MeetingControls.propTypes = {
+  selfView: PropTypes.object,
+  setSelfViewVisible: PropTypes.func.isRequired,
+  setSelfViewPosition: PropTypes.func.isRequired,
+};
 
-export default MeetingControls;
+function mapStateToProps(state) {
+  return {
+    selfView: state?.view?.selfView || {
+      visible: true,
+      position: { x: 0, y: 0 },
+    },
+  };
+}
+
+const mapDispatchToProps = {
+  setSelfViewVisible,
+  setSelfViewPosition,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(MeetingControls);
