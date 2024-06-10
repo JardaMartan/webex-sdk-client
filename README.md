@@ -8,9 +8,9 @@ Before running the application, copy the **`src/api/webexConfig.sample.js`** to 
 
 In the project directory, you can run:
 
-### `npm install`
+### `yarn install`
 
-Installs the dependencies needed for the application to run.
+Installs the dependencies needed for the application to run. As of version 3.1.0 of the SDK, `npm install` fails on @webex/plugin-presence. Use `yarn install` instead.
 
 ### `npm start`
 

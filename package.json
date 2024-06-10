@@ -8,17 +8,20 @@
     "@fontsource/inter": "^5.0.17",
     "@mui/icons-material": "^5.15.14",
     "@mui/joy": "^5.0.0-beta.32",
+    "@mui/material": "^5.2.0",
     "bootstrap": "^5.3.3",
     "browserify-fs": "^1.0.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.0",
     "file-loader": "^6.2.0",
     "http-server": "^14.1.1",
+    "husky": "^9.0.11",
     "immer": "^10.0.4",
     "isotope-layout": "^3.0.6",
     "isotope-packery": "^2.0.1",
     "jsrsasign": "^11.1.0",
     "os-browserify": "^0.3.0",
+    "patch-package": "^8.0.0",
     "path-browserify": "^1.0.1",
     "prop-types": "^15.8.1",
     "react": "^17.0.2",
@@ -34,7 +37,7 @@
     "use-media-stream": "^1.0.3",
     "vm-browserify": "^1.1.2",
     "web-vitals": "^3.5.2",
-    "webex": "^3.0.0"
+    "webex": "^3.1.0"
   },
   "scripts": {
     "start": "run-p start:dev",
@@ -46,7 +49,8 @@
     "build": "webpack --config webpack.config.prod.js",
     "clean:buildkp": "rimraf ./build && mkdir build",
     "prebuildkp": "run-p clean:build",
-    "buildkp": "webpack --config webpack.config.kp.js"
+    "buildkp": "webpack --config webpack.config.kp.js",
+    "update:sdk": "webex-package-tools update --tag {target-dist-tag} --packages {...packages-to-update}"
   },
   "eslintConfig": {
     "extends": [

@@ -1316,7 +1316,7 @@ export const MeetingProvider = ({
       return;
     }
     console.log(`Audio ${isAudioMuted ? "" : "un"}mute requested`);
-    state.localMedia.audio.setMuted(isAudioMuted);
+    state.localMedia.audio.setUserMuted(isAudioMuted);
     console.log(`Saving audio muted state: ${isAudioMuted}`);
     updateSelfView({ audioMuted: isAudioMuted });
   };
@@ -1331,7 +1331,7 @@ export const MeetingProvider = ({
       return;
     }
     console.log(`Video ${isVideoMuted ? "" : "un"}mute requested`);
-    state.localMedia.video.setMuted(isVideoMuted);
+    state.localMedia.video.setUserMuted(isVideoMuted);
     // console.log(`Saving video muted state: ${isVideoMuted}`);
     // updateSelfView({ videoMuted: isVideoMuted });
   };
